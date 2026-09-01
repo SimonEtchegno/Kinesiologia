@@ -5,6 +5,7 @@ import type { Sesion } from '@/lib/local/sesion'
 export interface Resultado {
   error?: string
   ok?: string
+  id?: string
   claveTemporal?: string
 }
 
@@ -89,6 +90,24 @@ export function cambiarRolProfesional(sesion: Sesion, datos: FormData): void {
   const rol = String(datos.get('rol') ?? '') === 'admin' ? 'admin' : 'kinesiologo'
   if (!id || id === sesion.perfil.id) return
   almacen.cambiarRolProfesional(id, rol)
+}
+
+// ============================================================
+// Sedes
+// ============================================================
+export function crearSede(sesion: Sesion, _previo: Resultado, datos: FormData): Resultado {
+  const nombre = String(datos.get('nombre') ?? '').trim()
+  const direccion = String(datos.get('direccion') ?? '').trim() || null
+
+  if (!nombre) return { error: 'Poné el nombre de la sede.' }
+
+  return almacen.crearSede(sesion.centro.id, nombre, direccion)
+}
+
+export function cambiarActivaSede(datos: FormData): void {
+  const id = String(datos.get('id') ?? '')
+  const activa = datos.get('activa') === 'si'
+  if (id) almacen.cambiarActivaSede(id, activa)
 }
 
 // ============================================================

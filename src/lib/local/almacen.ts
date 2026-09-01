@@ -14,7 +14,6 @@ import {
   ESTADOS_VIGENTES,
   type Centro,
   type Cobertura,
-  type EstadoTurno,
   type HorarioAtencion,
   type Observacion,
   type Paciente,
@@ -63,124 +62,16 @@ function enNavegador(): boolean {
 }
 
 // ------------------------------------------------------------
-// Semilla: un centro con dos profesionales, pacientes y turnos
-// de la semana actual, para que la app no arranque vacía.
+// Semilla: un centro con dos cuentas y sus horarios de atención
+// ya cargados, para que la app se pueda usar desde el primer
+// momento. Sin pacientes ni turnos de ejemplo: arranca en blanco,
+// lista para cargar datos reales.
 // ------------------------------------------------------------
 function sembrar(): BaseDatos {
   const centroId = id()
   const sedeId = id()
   const adminId = id()
   const kineId = id()
-
-  const hoy = new Date()
-  const iso = (d: Date) => {
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    const dd = String(d.getDate()).padStart(2, '0')
-    return d.getFullYear() + '-' + m + '-' + dd
-  }
-  const restar = (n: number) => {
-    const d = new Date(hoy)
-    d.setDate(d.getDate() - n)
-    return iso(d)
-  }
-
-  const pacientes: Paciente[] = [
-    {
-      id: id(), centro_id: centroId, nombre: 'Lucía', apellido: 'Ferreyra', dni: '32456789',
-      telefono: '11 4455-1122', email: 'lucia.ferreyra@mail.com', fecha_nacimiento: '1986-03-14',
-      cobertura: 'obra_social', obra_social: 'OSDE', nro_afiliado: '62-4455112-01',
-      notas: 'Derivada por hombro doloroso. 10 sesiones autorizadas.', activo: true,
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: id(), centro_id: centroId, nombre: 'Martín', apellido: 'Quiroga', dni: '28991234',
-      telefono: '11 6677-8899', email: null, fecha_nacimiento: '1981-11-02',
-      cobertura: 'particular', obra_social: null, nro_afiliado: null,
-      notas: 'Post operatorio de rodilla derecha.', activo: true, created_at: new Date().toISOString(),
-    },
-    {
-      id: id(), centro_id: centroId, nombre: 'Sofía', apellido: 'Beltrán', dni: '41233445',
-      telefono: '11 3344-5566', email: 'sofi.beltran@mail.com', fecha_nacimiento: '1998-07-21',
-      cobertura: 'obra_social', obra_social: 'Swiss Medical', nro_afiliado: 'SM-9981223',
-      notas: null, activo: true, created_at: new Date().toISOString(),
-    },
-    {
-      id: id(), centro_id: centroId, nombre: 'Jorge', apellido: 'Nieto', dni: '17554321',
-      telefono: '11 2233-4455', email: null, fecha_nacimiento: '1962-01-30',
-      cobertura: 'obra_social', obra_social: 'PAMI', nro_afiliado: 'PAMI-1755432',
-      notas: 'Marcha con bastón. Sesiones cortas.', activo: true, created_at: new Date().toISOString(),
-    },
-    {
-      id: id(), centro_id: centroId, nombre: 'Camila', apellido: 'Ordóñez', dni: '38776655',
-      telefono: '11 5566-7788', email: 'camila.o@mail.com', fecha_nacimiento: '1993-09-08',
-      cobertura: 'particular', obra_social: null, nro_afiliado: null,
-      notas: null, activo: true, created_at: new Date().toISOString(),
-    },
-  ]
-
-  const turnos: Turno[] = []
-  const turnoEventos: EventoAlmacenado[] = []
-  const observaciones: Observacion[] = []
-
-  const tipos = ['Kinesiología', 'Rehabilitación traumatológica', 'Terapia manual', 'Kinesiología deportiva']
-
-  for (let dia = 6; dia >= -4; dia--) {
-    const fecha = restar(dia)
-    const dow = diaSemana(fecha)
-    if (dow === 0 || dow === 6) continue // fin de semana, sin horarios
-
-    const franjas = [
-      { inicio: '09:00', fin: '13:00' },
-      { inicio: '15:00', fin: '19:00' },
-    ]
-
-    for (const prof of [adminId, kineId]) {
-      let turnosDelDia = 0
-      for (const franja of franjas) {
-        for (const hora of grillaHoraria(franja.inicio, franja.fin, 45)) {
-          if (turnosDelDia >= 3) break
-          if (Math.random() > 0.4) continue
-          turnosDelDia++
-
-          const paciente = pacientes[Math.floor(Math.random() * pacientes.length)]!
-          const finM = minutos(hora) + 45
-          let estado: EstadoTurno
-          if (dia > 0) {
-            const r = Math.random()
-            estado = r < 0.75 ? 'realizado' : r < 0.9 ? 'ausente' : 'cancelado'
-          } else if (dia === 0) {
-            estado = minutos(hora) < hoy.getHours() * 60 + hoy.getMinutes() ? 'realizado' : 'confirmado'
-          } else {
-            estado = 'confirmado'
-          }
-
-          const turnoId = id()
-          turnos.push({
-            id: turnoId, centro_id: centroId, profesional_id: prof, paciente_id: paciente.id,
-            sede_id: sedeId, fecha, hora_inicio: hora + ':00', hora_fin: desdeMinutos(finM) + ':00',
-            tipo_sesion: tipos[Math.floor(Math.random() * tipos.length)]!, estado,
-            motivo: estado === 'cancelado' ? 'Avisó el paciente' : null,
-            created_at: new Date().toISOString(),
-          })
-          turnoEventos.push({
-            id: id(), turno_id: turnoId, tipo: 'creado', detalle: null, usuario_id: adminId,
-            created_at: new Date().toISOString(),
-          })
-
-          if (estado === 'realizado' && Math.random() < 0.85) {
-            observaciones.push({
-              id: id(), turno_id: turnoId, paciente_id: paciente.id, profesional_id: prof,
-              evolucion: 'Buena tolerancia a la carga. Mejora el rango de movimiento respecto de la sesión anterior.',
-              dolor_referido: Math.floor(Math.random() * 6),
-              ejercicios_indicados: 'Isométricos 3 x 20 segundos, dos veces por día.',
-              proxima_sesion_sugerida: 'En 3 días',
-              created_at: new Date().toISOString(),
-            })
-          }
-        }
-      }
-    }
-  }
 
   const db: BaseDatos = {
     centros: [
@@ -194,16 +85,16 @@ function sembrar(): BaseDatos {
         activo: true, debe_cambiar_password: false,
       },
       {
-        id: kineId, centro_id: centroId, nombre: 'Tomás Ibáñez', email: 'tomas@centrokine.com.ar',
+        id: kineId, centro_id: centroId, nombre: 'Milagros Paz', email: 'milagros@centrokine.com.ar',
         rol: 'kinesiologo', especialidad: 'Kinesiología respiratoria', telefono: '11 5555-5678',
         activo: true, debe_cambiar_password: false,
       },
     ],
-    credenciales: { 'admin@centrokine.com.ar': 'kinesio123', 'tomas@centrokine.com.ar': 'kinesio123' },
-    pacientes,
-    turnos,
-    turnoEventos,
-    observaciones,
+    credenciales: { 'admin@centrokine.com.ar': 'kinesio123', 'milagros@centrokine.com.ar': 'kinesio123' },
+    pacientes: [],
+    turnos: [],
+    turnoEventos: [],
+    observaciones: [],
     horarios: [adminId, kineId].flatMap((prof) =>
       [1, 2, 3, 4, 5].flatMap((dia) => [
         { id: id(), profesional_id: prof, sede_id: sedeId, dia_semana: dia, hora_inicio: '09:00:00', hora_fin: '13:00:00' },
@@ -312,10 +203,27 @@ export function listarProfesionales(centroId: string, soloActivos = true): Perfi
     .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
 }
 
-export function listarSedes(centroId: string): Sede[] {
+export function listarSedes(centroId: string, soloActivas = true): Sede[] {
   return cargar()
-    .sedes.filter((s) => s.centro_id === centroId && s.activa)
+    .sedes.filter((s) => s.centro_id === centroId && (!soloActivas || s.activa))
     .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+}
+
+export function crearSede(centroId: string, nombre: string, direccion: string | null): Resultado {
+  const db = cargar()
+  const sedeId = id()
+  db.sedes.push({ id: sedeId, centro_id: centroId, nombre, direccion, activa: true })
+  guardar(db)
+  return { ok: 'Sede creada.', id: sedeId }
+}
+
+export function cambiarActivaSede(sedeId: string, activa: boolean) {
+  const db = cargar()
+  const s = db.sedes.find((x) => x.id === sedeId)
+  if (s) {
+    s.activa = activa
+    guardar(db)
+  }
 }
 
 // ------------------------------------------------------------

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { IconoDerecha, IconoPacientes, IconoReloj } from '@/componentes/Iconos'
+import { IconoDerecha, IconoPacientes, IconoReloj, IconoSede } from '@/componentes/Iconos'
 import { Encabezado } from '@/componentes/ui'
 import Protegido from '@/lib/local/Protegido'
 import { FormCentro, FormClave, FormMisDatos } from './FormulariosConfig'
@@ -16,7 +16,7 @@ export default function PaginaConfiguracion() {
 
           <div className="space-y-5">
             {/* Accesos */}
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <Link
                 href="/configuracion/horarios"
                 className="tarjeta flex items-center gap-4 p-5 transition-colors hover:border-marca-300 hover:bg-marca-50/40"
@@ -32,6 +32,24 @@ export default function PaginaConfiguracion() {
                 </span>
                 <IconoDerecha className="size-5 shrink-0 text-slate-300" />
               </Link>
+
+              {sesion.esAdmin && (
+                <Link
+                  href="/configuracion/sedes"
+                  className="tarjeta flex items-center gap-4 p-5 transition-colors hover:border-marca-300 hover:bg-marca-50/40"
+                >
+                  <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-acento-50 text-acento-700">
+                    <IconoSede />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-semibold text-slate-900">Sedes</span>
+                    <span className="block text-sm text-slate-500">
+                      Los lugares donde atiende el centro
+                    </span>
+                  </span>
+                  <IconoDerecha className="size-5 shrink-0 text-slate-300" />
+                </Link>
+              )}
 
               {sesion.esAdmin && (
                 <Link
@@ -74,10 +92,10 @@ export default function PaginaConfiguracion() {
 
             {sesion.esAdmin && (
               <section className="tarjeta p-5">
-                <h2 className="mb-1 font-semibold text-slate-900">Datos de ejemplo</h2>
+                <h2 className="mb-1 font-semibold text-slate-900">Vaciar pacientes y turnos</h2>
                 <p className="subtitulo mb-5">
-                  La app arrancó con pacientes y turnos de prueba para que veas cómo funciona.
-                  Borralos cuando quieras cargar los tuyos.
+                  Borra todos los pacientes, turnos y observaciones del centro para empezar de
+                  cero. Las cuentas y los horarios de atención quedan como están.
                 </p>
                 <VaciarDatos sesion={sesion} />
               </section>

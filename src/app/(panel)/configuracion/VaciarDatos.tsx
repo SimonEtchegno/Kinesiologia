@@ -29,7 +29,7 @@ export default function VaciarDatos({ sesion }: { sesion: Sesion }) {
           <div>
             <p className="font-semibold text-rose-900">¿Borrar todos los pacientes y turnos?</p>
             <p className="mt-1 text-sm text-rose-800">
-              Se van a borrar los pacientes, los turnos y las observaciones de ejemplo de{' '}
+              Se van a borrar todos los pacientes, los turnos y las observaciones de{' '}
               {sesion.centro.nombre}. Tu cuenta, la de los demás profesionales y los horarios de
               atención quedan como están. No se puede deshacer.
             </p>
@@ -49,7 +49,7 @@ export default function VaciarDatos({ sesion }: { sesion: Sesion }) {
 
   return (
     <button type="button" onClick={() => setConfirmando(true)} className="boton-peligro boton-chico">
-      Borrar pacientes y turnos de ejemplo
+      Vaciar pacientes y turnos
     </button>
   )
 }

@@ -98,7 +98,7 @@ function Login() {
                 <span className="font-medium">admin@centrokine.com.ar</span> (administrador)
               </li>
               <li>
-                <span className="font-medium">tomas@centrokine.com.ar</span> (kinesiólogo)
+                <span className="font-medium">milagros@centrokine.com.ar</span> (kinesióloga)
               </li>
             </ul>
             <p className="mt-2 text-slate-500">
