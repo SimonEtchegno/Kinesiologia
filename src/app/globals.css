@@ -1,26 +1,231 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ============================================================
+   Sistema visual
+   Azules/celestes como color principal, turquesa como acento,
+   fondos blancos y gris muy claro. Sin modo oscuro: la app es
+   una herramienta de consultorio, con luz de oficina.
+   ============================================================ */
+
+@theme {
+  --font-sans: var(--fuente-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, sans-serif;
+
+  /* Principal: azul / celeste */
+  --color-marca-50: #eff8ff;
+  --color-marca-100: #daeeff;
+  --color-marca-200: #bde1ff;
+  --color-marca-300: #90cefe;
+  --color-marca-400: #5cb1fb;
+  --color-marca-500: #368ff7;
+  --color-marca-600: #2071ec;
+  --color-marca-700: #1a5ad9;
+  --color-marca-800: #1c4baf;
+  --color-marca-900: #1c428a;
+
+  /* Acento: turquesa */
+  --color-acento-50: #edfcf7;
+  --color-acento-100: #d2f8ea;
+  --color-acento-200: #a9efd8;
+  --color-acento-300: #71e0c2;
+  --color-acento-400: #3ac9a8;
+  --color-acento-500: #17ae8f;
+  --color-acento-600: #0b8c75;
+  --color-acento-700: #0a705f;
+  --color-acento-800: #0b594d;
+  --color-acento-900: #0b4a41;
+
+  /* Fondos */
+  --color-lienzo: #f6f8fb;
+  --color-linea: #e6ebf2;
+
+  --radius-xl2: 0.875rem;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  body {
+    background-color: var(--color-lienzo);
+    color: var(--color-slate-800);
+    font-family: var(--font-sans);
+    /* Tamaños generosos: 15px de base en vez de 14px. */
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Foco visible y consistente en toda la app. */
+  :focus-visible {
+    outline: 2px solid var(--color-marca-500);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: var(--color-marca-100);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /* --- Superficies --- */
+  .tarjeta {
+    @apply rounded-xl2 border border-linea bg-white;
+  }
+
+  .tarjeta-sombra {
+    @apply rounded-xl2 border border-linea bg-white
+           shadow-[0_1px_2px_rgba(16,38,73,0.04),0_8px_24px_-12px_rgba(16,38,73,0.10)];
+  }
+
+  /* --- Tipografía --- */
+  .titulo-pagina {
+    @apply text-[1.6rem] font-semibold tracking-tight text-slate-900;
+  }
+
+  .subtitulo {
+    @apply text-sm text-slate-500;
+  }
+
+  .rotulo-seccion {
+    @apply text-xs font-semibold uppercase tracking-wider text-slate-400;
+  }
+
+  /* --- Formularios --- */
+  .etiqueta {
+    @apply mb-1.5 block text-sm font-medium text-slate-700;
+  }
+
+  .campo {
+    @apply block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900
+           placeholder:text-slate-400
+           focus:border-marca-500 focus:ring-4 focus:ring-marca-500/15 focus:outline-none
+           disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500;
+  }
+
+  .campo-error {
+    @apply border-rose-400 focus:border-rose-500 focus:ring-rose-500/15;
+  }
+
+  .ayuda {
+    @apply mt-1.5 text-xs text-slate-500;
+  }
+
+  .error-campo {
+    @apply mt-1.5 text-xs font-medium text-rose-600;
+  }
+
+  /* --- Botones --- */
+  .boton {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm
+           font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-55;
+  }
+
+  /* Las variantes repiten la base porque en Tailwind v4 @apply solo
+     acepta utilidades, no clases de componente propias. */
+  .boton-primario,
+  .boton-acento,
+  .boton-secundario,
+  .boton-fantasma,
+  .boton-peligro {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm
+           font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-55;
+  }
+
+  .boton-primario {
+    @apply bg-marca-600 text-white hover:bg-marca-700 active:bg-marca-800;
+  }
+
+  .boton-acento {
+    @apply bg-acento-600 text-white hover:bg-acento-700 active:bg-acento-800;
+  }
+
+  .boton-secundario {
+    @apply border border-slate-300 bg-white text-slate-700 hover:bg-slate-50;
+  }
+
+  .boton-fantasma {
+    @apply text-slate-600 hover:bg-slate-100;
+  }
+
+  .boton-peligro {
+    @apply border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100;
+  }
+
+  .boton-chico {
+    @apply gap-1.5 px-3 py-1.5 text-[0.8125rem];
+  }
+
+  /* --- Chips / badges --- */
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold
+           ring-1 ring-inset;
+  }
+
+  /* --- Avisos --- */
+  .aviso,
+  .aviso-error,
+  .aviso-ok,
+  .aviso-info {
+    @apply flex items-start gap-3 rounded-lg border px-4 py-3 text-sm;
+  }
+
+  .aviso-error {
+    @apply border-rose-200 bg-rose-50 text-rose-800;
+  }
+
+  .aviso-ok {
+    @apply border-acento-200 bg-acento-50 text-acento-800;
+  }
+
+  .aviso-info {
+    @apply border-marca-200 bg-marca-50 text-marca-800;
+  }
+
+  /* --- Tablas --- */
+  .tabla {
+    @apply w-full border-collapse text-sm;
+  }
+
+  .tabla thead th {
+    @apply border-b border-linea px-4 py-2.5 text-left text-xs font-semibold uppercase
+           tracking-wider text-slate-500;
+  }
+
+  .tabla tbody td {
+    @apply border-b border-linea px-4 py-3 align-middle;
+  }
+
+  .tabla tbody tr:last-child td {
+    @apply border-b-0;
+  }
+}
+
+@layer utilities {
+  /* Ocultar la barra de scroll manteniendo el scroll (grilla de la agenda). */
+  .scroll-fino {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-slate-300) transparent;
+  }
+
+  .scroll-fino::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scroll-fino::-webkit-scrollbar-thumb {
+    background-color: var(--color-slate-300);
+    border-radius: 9999px;
+  }
+}
+
+@media print {
+  .no-imprimir {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+  }
 }
