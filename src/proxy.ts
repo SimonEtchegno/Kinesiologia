@@ -47,6 +47,10 @@ export async function proxy(request: NextRequest) {
   }
 
   if (user && ruta === '/login') {
+    // Si viene con un error en los parámetros, no forzar redirección a la agenda
+    if (request.nextUrl.searchParams.has('error')) {
+      return respuesta
+    }
     const url = request.nextUrl.clone()
     url.pathname = '/agenda'
     url.search = ''

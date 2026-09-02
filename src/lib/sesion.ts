@@ -70,7 +70,11 @@ export const obtenerSesion = cache(async (): Promise<Sesion | null> => {
 /** Para páginas del panel: si no hay sesión, al login. */
 export async function exigirSesion(): Promise<Sesion> {
   const sesion = await obtenerSesion()
-  if (!sesion) redirect('/login')
+  if (!sesion) {
+    const supabase = await clienteServidor()
+    await supabase.auth.signOut()
+    redirect('/login?error=' + encodeURIComponent('Tu usuario no tiene un centro asignado en la base de datos. Ejecutá el SQL de inicialización en Supabase.'))
+  }
   return sesion
 }
 
