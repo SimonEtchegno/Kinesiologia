@@ -2,38 +2,25 @@
 
 import { useActionState, useState } from 'react'
 import { IconoAlerta, IconoCheck, IconoReloj, IconoX } from '@/componentes/Iconos'
-import type { Franja } from '@/lib/local/almacen'
-import type { Sesion } from '@/lib/local/sesion'
-import { cancelarTurno, reprogramarTurno, type Resultado } from '../acciones'
+import type { Franja } from '@/lib/datos'
+import { cancelarTurno, reprogramarTurno } from '../acciones'
 
 /** UC-04 — Reprogramar o cancelar. */
 export default function AccionesTurno({
-  sesion,
   turnoId,
   fecha,
   horaActual,
   libres,
-  onCambio,
 }: {
-  sesion: Sesion
   turnoId: string
   fecha: string
   horaActual: string
   libres: Franja[]
-  onCambio: () => void
 }) {
   const [panel, setPanel] = useState<'nada' | 'reprogramar' | 'cancelar'>('nada')
 
-  const [repro, accionRepro, reproPendiente] = useActionState<Resultado, FormData>((prev, fd) => {
-    const r = reprogramarTurno(sesion, prev, fd)
-    if (r.ok) onCambio()
-    return r
-  }, {})
-  const [cancel, accionCancel, cancelPendiente] = useActionState<Resultado, FormData>((prev, fd) => {
-    const r = cancelarTurno(sesion, prev, fd)
-    if (r.ok) onCambio()
-    return r
-  }, {})
+  const [repro, accionRepro, reproPendiente] = useActionState(reprogramarTurno, {})
+  const [cancel, accionCancel, cancelPendiente] = useActionState(cancelarTurno, {})
 
   const [nuevaFecha, setNuevaFecha] = useState(fecha)
   const [nuevaHora, setNuevaHora] = useState('')

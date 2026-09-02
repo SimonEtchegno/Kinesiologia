@@ -11,6 +11,7 @@ import Protegido from '@/lib/local/Protegido'
 import type { Sesion } from '@/lib/local/sesion'
 import BarraAgenda, { type Vista } from './BarraAgenda'
 import GrillaSemana from './GrillaSemana'
+import LeyendaTipos from './LeyendaTipos'
 import VistaDia from './VistaDia'
 
 function Contenido({ sesion }: { sesion: Sesion }) {
@@ -85,22 +86,30 @@ function Contenido({ sesion }: { sesion: Sesion }) {
       />
 
       {turnos.length > 0 && (
-        <div className="mb-4 flex flex-wrap gap-x-5 gap-y-1 text-sm text-slate-500">
-          <span>
-            <strong className="font-semibold text-slate-800">{turnos.length}</strong> turnos
-          </span>
-          <span>
-            <strong className="font-semibold text-slate-800">{contar('realizado')}</strong> realizados
-          </span>
-          <span>
-            <strong className="font-semibold text-slate-800">{contar('ausente')}</strong> ausentes
-          </span>
-          <span>
-            <strong className="font-semibold text-slate-800">
-              {contar('confirmado') + contar('reprogramado')}
-            </strong>{' '}
-            pendientes
-          </span>
+        <div className="mb-5 flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
+          <div className="inline-flex items-center gap-2 rounded-xl border border-linea bg-white px-3 py-1.5 shadow-2xs dark:bg-slate-850 dark:border-slate-800">
+            <span className="size-2 rounded-full bg-slate-400" />
+            <span className="text-slate-500 dark:text-slate-400">Total:</span>
+            <span className="font-bold text-slate-900 dark:text-white tabular-nums">{turnos.length}</span>
+          </div>
+
+          <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-200/80 bg-emerald-50/70 px-3 py-1.5 text-emerald-800 shadow-2xs dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300">
+            <span className="size-2 rounded-full bg-emerald-500" />
+            <span>Realizados:</span>
+            <span className="font-bold tabular-nums">{contar('realizado')}</span>
+          </div>
+
+          <div className="inline-flex items-center gap-2 rounded-xl border border-marca-200/80 bg-marca-50/70 px-3 py-1.5 text-marca-800 shadow-2xs dark:border-marca-800/60 dark:bg-marca-950/40 dark:text-marca-300">
+            <span className="size-2 rounded-full bg-marca-500" />
+            <span>Pendientes:</span>
+            <span className="font-bold tabular-nums">{contar('confirmado') + contar('reprogramado')}</span>
+          </div>
+
+          <div className="inline-flex items-center gap-2 rounded-xl border border-rose-200/80 bg-rose-50/70 px-3 py-1.5 text-rose-800 shadow-2xs dark:border-rose-800/60 dark:bg-rose-950/40 dark:text-rose-300">
+            <span className="size-2 rounded-full bg-rose-500" />
+            <span>Ausentes:</span>
+            <span className="font-bold tabular-nums">{contar('ausente')}</span>
+          </div>
         </div>
       )}
 
@@ -121,6 +130,8 @@ function Contenido({ sesion }: { sesion: Sesion }) {
           onCambio={cargar}
         />
       )}
+
+      <LeyendaTipos turnos={turnos} />
     </>
   )
 }

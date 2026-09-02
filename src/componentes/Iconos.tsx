@@ -176,3 +176,61 @@ export const IconoHistorial = (p: Props) => (
     <path d="M12 8.5V12l2.8 1.8" />
   </Base>
 )
+
+/** Globo de WhatsApp con el teléfono adentro, en el mismo trazo que el resto. */
+export const IconoWhatsApp = (p: Props) => (
+  <Base {...p}>
+    <path d="M20.5 11.7a8.4 8.4 0 0 1-12.4 7.4L3.5 20.5l1.5-4.4a8.4 8.4 0 1 1 15.5-4.4Z" />
+    <path d="M9 9.2c.2-.5.5-.6.8-.6h.5c.2 0 .4 0 .5.4l.6 1.4c0 .2 0 .3-.1.5l-.4.5c-.1.2-.2.3 0 .6a6 6 0 0 0 2.6 2.2c.3.1.4 0 .6-.1l.5-.6c.1-.2.3-.2.5-.1l1.4.7c.2.1.3.2.3.4a1.7 1.7 0 0 1-1.2 1.4c-.5.1-1.2.2-3.4-.7a7.6 7.6 0 0 1-3.3-3.4c-.3-.7-.5-1.5.1-2.6Z" />
+  </Base>
+)
+
+/** Link / enlace, para la página pública de reservas. */
+export const IconoLink = (p: Props) => (
+  <Base {...p}>
+    <path d="M10 13.5a3.5 3.5 0 0 0 5 0l2.5-2.5a3.5 3.5 0 0 0-5-5l-1.2 1.2" />
+    <path d="M14 10.5a3.5 3.5 0 0 0-5 0L6.5 13a3.5 3.5 0 0 0 5 5l1.2-1.2" />
+  </Base>
+)
+
+/** Globo de diálogo, para lo que va por mensaje. */
+export const IconoMensaje = (p: Props) => (
+  <Base {...p}>
+    <path d="M20.5 12c0 4-3.8 7.2-8.5 7.2-.9 0-1.8-.1-2.6-.3L4 20.5l1.3-3.4A6.9 6.9 0 0 1 3.5 12c0-4 3.8-7.2 8.5-7.2s8.5 3.2 8.5 7.2Z" />
+  </Base>
+)
+
+export const IconoSol = (p: Props) => (
+  <Base {...p}>
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+  </Base>
+)
+
+export const IconoLuna = (p: Props) => (
+  <Base {...p}>
+    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+  </Base>
+)
+
+export const IconoFiltro = (p: Props) => (
+  <Base {...p}>
+    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+  </Base>
+)
+
+export const IconoFlechaDerecha = (p: Props) => (
+  <Base {...p}>
+    <path d="M5 12h14M12 5l7 7-7 7" />
+  </Base>
+)
+
+export const IconoInfo = (p: Props) => (
+  <Base {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <line x1="12" y1="16" x2="12" y2="12" />
+    <line x1="12" y1="8" x2="12.01" y2="8" />
+  </Base>
+)
+
+

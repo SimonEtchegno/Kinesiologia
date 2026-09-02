@@ -8,7 +8,7 @@
 // caso de uso, baja lógica en vez de borrado.
 // ============================================================
 
-import { grillaHoraria, minutos, desdeMinutos, diaSemana } from '@/lib/fechas'
+import { grillaHoraria, minutos, desdeMinutos, diaSemana, hoyISO, sumarDias, yaPaso } from '@/lib/fechas'
 import {
   ESTADOS_CERRADOS,
   ESTADOS_VIGENTES,
@@ -75,7 +75,11 @@ function sembrar(): BaseDatos {
 
   const db: BaseDatos = {
     centros: [
-      { id: centroId, nombre: 'Centro Kine Palermo', kinesiologos_pueden_crear_turnos: true, duracion_turno_min: 45 },
+      {
+        id: centroId, nombre: 'Centro Kine Palermo', kinesiologos_pueden_crear_turnos: true,
+        duracion_turno_min: 45, reservas_publicas: false, whatsapp_ingreso_automatico: true,
+        telefono: '11 5555-1234',
+      },
     ],
     sedes: [{ id: sedeId, centro_id: centroId, nombre: 'Sede Palermo', direccion: null, activa: true }],
     perfiles: [
@@ -106,6 +110,20 @@ function sembrar(): BaseDatos {
   return db
 }
 
+/**
+ * Completa los campos que se agregaron después, para que una base guardada
+ * en el navegador antes de esa versión siga funcionando.
+ */
+function migrar(db: BaseDatos): BaseDatos {
+  for (const c of db.centros) {
+    c.reservas_publicas = c.reservas_publicas ?? false
+    c.whatsapp_ingreso_automatico = c.whatsapp_ingreso_automatico ?? true
+    c.telefono = c.telefono ?? null
+  }
+  for (const t of db.turnos) t.origen = t.origen ?? 'centro'
+  return db
+}
+
 let cache: BaseDatos | null = null
 
 function cargar(): BaseDatos {
@@ -117,7 +135,7 @@ function cargar(): BaseDatos {
   const crudo = window.localStorage.getItem(CLAVE)
   if (crudo) {
     try {
-      cache = JSON.parse(crudo) as BaseDatos
+      cache = migrar(JSON.parse(crudo) as BaseDatos)
       return cache
     } catch {
       // localStorage corrupto: se vuelve a sembrar abajo.
@@ -185,6 +203,64 @@ export function iniciarSesion(email: string, password: string): { error?: string
   return { perfil }
 }
 
+/**
+ * Alta de cuenta desde la pantalla de registro. Toda cuenta que se crea
+ * acá entra como **administrador**: ve la agenda de todo el centro,
+ * carga turnos para cualquier profesional y toca la configuración.
+ * Queda logueada al terminar, así no hay que volver a escribir la clave.
+ */
+export function registrarCuenta(input: {
+  nombre: string
+  email: string
+  password: string
+}): Resultado {
+  const db = cargar()
+  const nombre = input.nombre.trim()
+  const correo = input.email.trim().toLowerCase()
+
+  if (nombre.length < 2) return { error: 'Escribí tu nombre y apellido.' }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) return { error: 'Ese email no parece válido.' }
+  if (input.password.length < 6) return { error: 'La contraseña tiene que tener al menos 6 caracteres.' }
+  if (db.perfiles.some((p) => p.email === correo)) {
+    return { error: 'Ya hay una cuenta con ese email. Entrá con tu contraseña.' }
+  }
+
+  // Cada cuenta estrena su propio centro: no comparte pacientes, turnos ni
+  // agenda con las demás cuentas del navegador.
+  const centroId = id()
+  const sedeId = id()
+  db.centros.push({
+    id: centroId,
+    nombre: 'Centro de ' + nombre.split(' ')[0],
+    kinesiologos_pueden_crear_turnos: true,
+    duracion_turno_min: 45,
+    reservas_publicas: false,
+    whatsapp_ingreso_automatico: true,
+    telefono: null,
+  })
+  db.sedes.push({ id: sedeId, centro_id: centroId, nombre: 'Consultorio', direccion: null, activa: true })
+
+  const perfilId = id()
+  db.perfiles.push({
+    id: perfilId, centro_id: centroId, nombre, email: correo, rol: 'admin',
+    especialidad: null, telefono: null, activo: true, debe_cambiar_password: false,
+  })
+  db.credenciales[correo] = input.password
+
+  // Horarios de atención por defecto (lunes a viernes), para que la agenda
+  // propia sirva desde el primer turno. Se editan en Configuración.
+  for (const dia of [1, 2, 3, 4, 5]) {
+    db.horarios.push(
+      { id: id(), profesional_id: perfilId, sede_id: sedeId, dia_semana: dia, hora_inicio: '09:00:00', hora_fin: '13:00:00' },
+      { id: id(), profesional_id: perfilId, sede_id: sedeId, dia_semana: dia, hora_inicio: '15:00:00', hora_fin: '19:00:00' },
+    )
+  }
+
+  guardar(db)
+  if (enNavegador()) window.localStorage.setItem(CLAVE_SESION, perfilId)
+  return { ok: 'Cuenta creada. Ya sos administrador del centro.', id: perfilId }
+}
+
 export function cerrarSesion() {
   if (enNavegador()) window.localStorage.removeItem(CLAVE_SESION)
 }
@@ -192,6 +268,28 @@ export function cerrarSesion() {
 export function centroDe(centroId: string): Centro | null {
   return cargar().centros.find((c) => c.id === centroId) ?? null
 }
+
+// ------------------------------------------------------------
+// Aislamiento por centro
+// Cada cuenta tiene su propio centro y solo ve lo suyo: todo lo que
+// se busca por id pasa antes por estos filtros. Es el equivalente
+// local a las políticas RLS de Postgres (ver supabase/0002_rls.sql).
+// ------------------------------------------------------------
+
+function perfilDelCentro(db: BaseDatos, perfilId: string, centroId: string): Perfil | undefined {
+  return db.perfiles.find((p) => p.id === perfilId && p.centro_id === centroId)
+}
+
+function turnoDelCentro(db: BaseDatos, turnoId: string, centroId: string): Turno | undefined {
+  return db.turnos.find((t) => t.id === turnoId && t.centro_id === centroId)
+}
+
+function pacienteDelCentro(db: BaseDatos, pacienteId: string, centroId: string): Paciente | undefined {
+  return db.pacientes.find((p) => p.id === pacienteId && p.centro_id === centroId)
+}
+
+/** Mensaje único para todo lo que no es del centro: no confirmamos que exista. */
+const AJENO = 'No encontramos ese dato en tu centro.'
 
 // ------------------------------------------------------------
 // Profesionales y sedes
@@ -217,9 +315,9 @@ export function crearSede(centroId: string, nombre: string, direccion: string | 
   return { ok: 'Sede creada.', id: sedeId }
 }
 
-export function cambiarActivaSede(sedeId: string, activa: boolean) {
+export function cambiarActivaSede(sedeId: string, centroId: string, activa: boolean) {
   const db = cargar()
-  const s = db.sedes.find((x) => x.id === sedeId)
+  const s = db.sedes.find((x) => x.id === sedeId && x.centro_id === centroId)
   if (s) {
     s.activa = activa
     guardar(db)
@@ -236,7 +334,7 @@ function expandir(db: BaseDatos, t: Turno): TurnoExpandido {
   const s = db.sedes.find((x) => x.id === t.sede_id) ?? null
   return {
     ...t,
-    paciente: p ? { id: p.id, nombre: p.nombre, apellido: p.apellido, cobertura: p.cobertura, obra_social: p.obra_social } : null,
+    paciente: p ? { id: p.id, nombre: p.nombre, apellido: p.apellido, cobertura: p.cobertura, obra_social: p.obra_social, telefono: p.telefono } : null,
     profesional: pr ? { id: pr.id, nombre: pr.nombre, especialidad: pr.especialidad } : null,
     sede: s ? { id: s.id, nombre: s.nombre } : null,
     tiene_observacion: db.observaciones.some((o) => o.turno_id === t.id),
@@ -259,20 +357,24 @@ export function turnosEnRango(
     .map((t) => expandir(db, t))
 }
 
-export function turnoPorId(id: string): TurnoExpandido | null {
+export function turnoPorId(id: string, centroId: string): TurnoExpandido | null {
   const db = cargar()
-  const t = db.turnos.find((x) => x.id === id)
+  const t = turnoDelCentro(db, id, centroId)
   return t ? expandir(db, t) : null
 }
 
-export function eventosDeTurno(turnoId: string): TurnoEvento[] {
-  return cargar()
-    .turnoEventos.filter((e) => e.turno_id === turnoId)
+export function eventosDeTurno(turnoId: string, centroId: string): TurnoEvento[] {
+  const db = cargar()
+  if (!turnoDelCentro(db, turnoId, centroId)) return []
+  return db.turnoEventos
+    .filter((e) => e.turno_id === turnoId)
     .sort((a, b) => a.created_at.localeCompare(b.created_at))
 }
 
-export function observacionDeTurno(turnoId: string): Observacion | null {
-  return cargar().observaciones.find((o) => o.turno_id === turnoId) ?? null
+export function observacionDeTurno(turnoId: string, centroId: string): Observacion | null {
+  const db = cargar()
+  if (!turnoDelCentro(db, turnoId, centroId)) return null
+  return db.observaciones.find((o) => o.turno_id === turnoId) ?? null
 }
 
 // ------------------------------------------------------------
@@ -292,12 +394,15 @@ export function buscarPacientes(
     .sort((a, b) => a.apellido.localeCompare(b.apellido, 'es') || a.nombre.localeCompare(b.nombre, 'es'))
 }
 
-export function pacientePorId(id: string): Paciente | null {
-  return cargar().pacientes.find((p) => p.id === id) ?? null
+export function pacientePorId(id: string, centroId: string): Paciente | null {
+  return pacienteDelCentro(cargar(), id, centroId) ?? null
 }
 
-export function historialPaciente(pacienteId: string) {
+export function historialPaciente(pacienteId: string, centroId: string) {
   const db = cargar()
+  if (!pacienteDelCentro(db, pacienteId, centroId)) {
+    return { turnos: [] as TurnoExpandido[], observacionPorTurno: new Map<string, Observacion>() }
+  }
   const turnos = db.turnos
     .filter((t) => t.paciente_id === pacienteId)
     .sort((a, b) => (b.fecha + b.hora_inicio).localeCompare(a.fecha + a.hora_inicio))
@@ -310,9 +415,11 @@ export function historialPaciente(pacienteId: string) {
 // Horarios y disponibilidad (UC-09, UC-03)
 // ------------------------------------------------------------
 
-export function horariosDe(profesionalId: string): HorarioAtencion[] {
-  return cargar()
-    .horarios.filter((h) => h.profesional_id === profesionalId)
+export function horariosDe(profesionalId: string, centroId: string): HorarioAtencion[] {
+  const db = cargar()
+  if (!perfilDelCentro(db, profesionalId, centroId)) return []
+  return db.horarios
+    .filter((h) => h.profesional_id === profesionalId)
     .sort((a, b) => a.dia_semana - b.dia_semana || a.hora_inicio.localeCompare(b.hora_inicio))
 }
 
@@ -331,9 +438,13 @@ export function slotsDisponibles(
   profesionalId: string,
   fecha: string,
   duracionMin: number,
+  centroId: string,
   excluir?: string,
 ): { libres: Franja[]; ocupados: Franja[]; atiende: boolean } {
   const db = cargar()
+  if (!perfilDelCentro(db, profesionalId, centroId)) {
+    return { libres: [], ocupados: [], atiende: false }
+  }
   const dow = diaSemana(fecha)
   const franjas = db.horarios.filter((h) => h.profesional_id === profesionalId && h.dia_semana === dow)
   const tomados = db.turnos
@@ -422,6 +533,9 @@ export function crearTurno(input: {
     if (input.profesionalId !== input.usuarioId) return { error: 'Solo podés cargar turnos en tu propia agenda.' }
   }
 
+  if (!perfilDelCentro(db, input.profesionalId, input.centroId)) return { error: AJENO }
+  if (!pacienteDelCentro(db, input.pacienteId, input.centroId)) return { error: AJENO }
+
   const horaFin = desdeMinutos(minutos(input.horaInicio) + input.duracionMin)
   if (minutos(horaFin) > 24 * 60) return { error: 'El turno no puede pasar de la medianoche.' }
 
@@ -439,7 +553,8 @@ export function crearTurno(input: {
   db.turnos.push({
     id: turnoId, centro_id: input.centroId, profesional_id: input.profesionalId, paciente_id: input.pacienteId,
     sede_id: input.sedeId, fecha: input.fecha, hora_inicio: input.horaInicio + ':00', hora_fin: horaFin + ':00',
-    tipo_sesion: input.tipoSesion, estado: 'confirmado', motivo: null, created_at: new Date().toISOString(),
+    tipo_sesion: input.tipoSesion, estado: 'confirmado', motivo: null, origen: 'centro',
+    created_at: new Date().toISOString(),
   })
   agregarEvento(
     db, turnoId, 'creado',
@@ -472,7 +587,7 @@ export function crearPacienteRapido(input: {
   return { ok: 'Paciente creado.', id: pacId }
 }
 
-function agregarEvento(db: BaseDatos, turnoId: string, tipo: string, detalle: string | null, usuarioId: string) {
+function agregarEvento(db: BaseDatos, turnoId: string, tipo: string, detalle: string | null, usuarioId: string | null) {
   db.turnoEventos.push({
     id: id(), turno_id: turnoId, tipo, detalle, usuario_id: usuarioId, created_at: new Date().toISOString(),
   })
@@ -480,6 +595,7 @@ function agregarEvento(db: BaseDatos, turnoId: string, tipo: string, detalle: st
 
 export function reprogramarTurno(input: {
   turnoId: string
+  centroId: string
   usuarioId: string
   esAdmin: boolean
   fecha: string
@@ -487,8 +603,8 @@ export function reprogramarTurno(input: {
   forzarFueraDeHorario: boolean
 }): Resultado {
   const db = cargar()
-  const turno = db.turnos.find((t) => t.id === input.turnoId)
-  if (!turno) return { error: 'No encontramos el turno.' }
+  const turno = turnoDelCentro(db, input.turnoId, input.centroId)
+  if (!turno) return { error: AJENO }
   if (ESTADOS_CERRADOS.includes(turno.estado)) return { error: 'Este turno ya está cerrado: no se puede reprogramar.' }
   if (!input.esAdmin && turno.profesional_id !== input.usuarioId) {
     return { error: 'Solo el profesional del turno o el administrador pueden modificarlo.' }
@@ -518,10 +634,16 @@ export function reprogramarTurno(input: {
   return { ok: 'Turno reprogramado.' }
 }
 
-export function cancelarTurno(input: { turnoId: string; usuarioId: string; esAdmin: boolean; motivo: string }): Resultado {
+export function cancelarTurno(input: {
+  turnoId: string
+  centroId: string
+  usuarioId: string
+  esAdmin: boolean
+  motivo: string
+}): Resultado {
   const db = cargar()
-  const turno = db.turnos.find((t) => t.id === input.turnoId)
-  if (!turno) return { error: 'No encontramos el turno.' }
+  const turno = turnoDelCentro(db, input.turnoId, input.centroId)
+  if (!turno) return { error: AJENO }
   if (ESTADOS_CERRADOS.includes(turno.estado)) return { error: 'Este turno ya está cerrado: no se puede cancelar.' }
   if (!input.esAdmin && turno.profesional_id !== input.usuarioId) {
     return { error: 'Solo el profesional del turno o el administrador pueden cancelarlo.' }
@@ -534,10 +656,16 @@ export function cancelarTurno(input: { turnoId: string; usuarioId: string; esAdm
   return { ok: 'Turno cancelado.' }
 }
 
-export function marcarTurno(input: { turnoId: string; usuarioId: string; esAdmin: boolean; estado: 'realizado' | 'ausente' }): Resultado {
+export function marcarTurno(input: {
+  turnoId: string
+  centroId: string
+  usuarioId: string
+  esAdmin: boolean
+  estado: 'realizado' | 'ausente'
+}): Resultado {
   const db = cargar()
-  const turno = db.turnos.find((t) => t.id === input.turnoId)
-  if (!turno) return { error: 'No encontramos el turno.' }
+  const turno = turnoDelCentro(db, input.turnoId, input.centroId)
+  if (!turno) return { error: AJENO }
   if (turno.estado === 'cancelado') return { error: 'El turno está cancelado.' }
   if (!input.esAdmin && turno.profesional_id !== input.usuarioId) return { error: 'No podés modificar este turno.' }
 
@@ -547,19 +675,48 @@ export function marcarTurno(input: { turnoId: string; usuarioId: string; esAdmin
   return { ok: 'Listo.' }
 }
 
+/** Corregir el tipo de sesión de un turno ya cargado (cambia su color). */
+export function cambiarTipoSesion(input: {
+  turnoId: string
+  centroId: string
+  usuarioId: string
+  esAdmin: boolean
+  tipoSesion: string
+}): Resultado {
+  const db = cargar()
+  const turno = turnoDelCentro(db, input.turnoId, input.centroId)
+  if (!turno) return { error: AJENO }
+  if (turno.estado === 'cancelado') return { error: 'El turno está cancelado.' }
+  if (!input.esAdmin && turno.profesional_id !== input.usuarioId) {
+    return { error: 'Solo el profesional del turno o el administrador pueden modificarlo.' }
+  }
+  if (!input.tipoSesion.trim()) return { error: 'Elegí un tipo de sesión.' }
+  if (input.tipoSesion === turno.tipo_sesion) return { error: 'Ya es el tipo que tenía.' }
+
+  const anterior = turno.tipo_sesion
+  turno.tipo_sesion = input.tipoSesion
+  agregarEvento(db, turno.id, 'tipo', anterior + ' → ' + input.tipoSesion, input.usuarioId)
+  guardar(db)
+  return { ok: 'Tipo de sesión actualizado.' }
+}
+
 export function guardarObservacion(input: {
   turnoId: string
+  centroId: string
   usuarioId: string
+  esAdmin: boolean
   evolucion: string
   dolorReferido: number | null
   ejerciciosIndicados: string | null
   proximaSesionSugerida: string | null
 }): Resultado {
   const db = cargar()
-  const turno = db.turnos.find((t) => t.id === input.turnoId)
-  if (!turno) return { error: 'No encontramos el turno.' }
+  const turno = turnoDelCentro(db, input.turnoId, input.centroId)
+  if (!turno) return { error: AJENO }
   if (turno.estado !== 'realizado') return { error: 'Primero marcá el turno como realizado.' }
-  if (turno.profesional_id !== input.usuarioId) return { error: 'La observación la carga el profesional que atendió la sesión.' }
+  if (!input.esAdmin && turno.profesional_id !== input.usuarioId) {
+    return { error: 'La observación la carga el profesional que atendió la sesión.' }
+  }
 
   const existente = db.observaciones.find((o) => o.turno_id === input.turnoId)
   if (existente) {
@@ -609,10 +766,10 @@ export function crearPaciente(centroId: string, campos: CamposPaciente): Resulta
   return { ok: 'Paciente creado.', id: pacId }
 }
 
-export function actualizarPaciente(pacienteId: string, campos: CamposPaciente): Resultado {
+export function actualizarPaciente(pacienteId: string, centroId: string, campos: CamposPaciente): Resultado {
   const db = cargar()
-  const p = db.pacientes.find((x) => x.id === pacienteId)
-  if (!p) return { error: 'No encontramos al paciente.' }
+  const p = pacienteDelCentro(db, pacienteId, centroId)
+  if (!p) return { error: AJENO }
   if (campos.dni && db.pacientes.some((x) => x.id !== pacienteId && x.centro_id === p.centro_id && x.dni === campos.dni)) {
     return { error: 'Ya hay otro paciente con ese DNI.' }
   }
@@ -621,9 +778,9 @@ export function actualizarPaciente(pacienteId: string, campos: CamposPaciente): 
   return { ok: 'Cambios guardados.' }
 }
 
-export function cambiarActivoPaciente(pacienteId: string, activo: boolean) {
+export function cambiarActivoPaciente(pacienteId: string, centroId: string, activo: boolean) {
   const db = cargar()
-  const p = db.pacientes.find((x) => x.id === pacienteId)
+  const p = pacienteDelCentro(db, pacienteId, centroId)
   if (p) {
     p.activo = activo
     guardar(db)
@@ -636,12 +793,14 @@ export function cambiarActivoPaciente(pacienteId: string, activo: boolean) {
 
 export function agregarHorario(input: {
   profesionalId: string
+  centroId: string
   sedeId: string | null
   dias: number[]
   horaInicio: string
   horaFin: string
 }): Resultado {
   const db = cargar()
+  if (!perfilDelCentro(db, input.profesionalId, input.centroId)) return { error: AJENO }
   for (const dia of input.dias) {
     const solapa = db.horarios.some(
       (h) =>
@@ -663,9 +822,11 @@ export function agregarHorario(input: {
   return { ok: 'Franja agregada.' }
 }
 
-export function borrarHorario(horarioId: string) {
+export function borrarHorario(horarioId: string, centroId: string) {
   const db = cargar()
-  db.horarios = db.horarios.filter((h) => h.id !== horarioId)
+  const h = db.horarios.find((x) => x.id === horarioId)
+  if (!h || !perfilDelCentro(db, h.profesional_id, centroId)) return
+  db.horarios = db.horarios.filter((x) => x.id !== horarioId)
   guardar(db)
 }
 
@@ -722,27 +883,244 @@ export function crearProfesional(input: {
   return { ok: input.nombre + ' ya tiene cuenta y agenda propia.', claveTemporal: clave, id: perfilId }
 }
 
-export function cambiarActivoProfesional(perfilId: string, activo: boolean) {
+export function cambiarActivoProfesional(perfilId: string, centroId: string, activo: boolean) {
   const db = cargar()
-  const p = db.perfiles.find((x) => x.id === perfilId)
+  const p = perfilDelCentro(db, perfilId, centroId)
   if (p) {
     p.activo = activo
     guardar(db)
   }
 }
 
-export function cambiarRolProfesional(perfilId: string, rol: Rol) {
+export function cambiarRolProfesional(perfilId: string, centroId: string, rol: Rol) {
   const db = cargar()
-  const p = db.perfiles.find((x) => x.id === perfilId)
+  const p = perfilDelCentro(db, perfilId, centroId)
   if (p) {
     p.rol = rol
     guardar(db)
   }
 }
 
+/** Prende o apaga el WhatsApp automático al cargar un ingreso. */
+export function cambiarWhatsappAutomatico(centroId: string, activo: boolean): Resultado {
+  const db = cargar()
+  const c = db.centros.find((x) => x.id === centroId)
+  if (!c) return { error: AJENO }
+  c.whatsapp_ingreso_automatico = activo
+  guardar(db)
+  return {
+    ok: activo
+      ? 'Al cargar un ingreso te vamos a ofrecer el WhatsApp de bienvenida.'
+      : 'Listo: el WhatsApp de bienvenida ya no se ofrece solo. Igual lo tenés a mano en cada turno.',
+  }
+}
+
+/** Prende o apaga la página pública de reservas (UC nuevo: turnos online). */
+export function cambiarReservasPublicas(centroId: string, activas: boolean): Resultado {
+  const db = cargar()
+  const c = db.centros.find((x) => x.id === centroId)
+  if (!c) return { error: AJENO }
+  c.reservas_publicas = activas
+  guardar(db)
+  return {
+    ok: activas
+      ? 'Los pacientes ya pueden sacar turno desde la página pública.'
+      : 'Listo: la página pública quedó cerrada. Los turnos los cargás solo vos.',
+  }
+}
+
+// ------------------------------------------------------------
+// Reservas online — lo que usa la página pública (sin login).
+// Devuelve siempre lo mínimo: nada de emails ni datos de otros
+// pacientes, y solo del centro cuyo link se abrió.
+// ------------------------------------------------------------
+
+export interface ProfesionalPublico {
+  id: string
+  nombre: string
+  especialidad: string | null
+}
+
+export interface DatosReserva {
+  centro: Pick<Centro, 'id' | 'nombre' | 'duracion_turno_min' | 'telefono'> | null
+  abierto: boolean
+  profesionales: ProfesionalPublico[]
+  sedes: Sede[]
+}
+
+/** Cuántos días para adelante se puede reservar desde la página pública. */
+export const DIAS_RESERVA_ONLINE = 60
+
+export function datosParaReservar(centroId?: string | null): DatosReserva {
+  const db = cargar()
+  const centro = centroId
+    ? (db.centros.find((c) => c.id === centroId) ?? null)
+    : (db.centros.find((c) => c.reservas_publicas) ?? null)
+
+  if (!centro) return { centro: null, abierto: false, profesionales: [], sedes: [] }
+
+  const publico = {
+    id: centro.id,
+    nombre: centro.nombre,
+    duracion_turno_min: centro.duracion_turno_min,
+    telefono: centro.telefono,
+  }
+  if (!centro.reservas_publicas) return { centro: publico, abierto: false, profesionales: [], sedes: [] }
+
+  const profesionales = db.perfiles
+    .filter((p) => p.centro_id === centro.id && p.activo)
+    .filter((p) => db.horarios.some((h) => h.profesional_id === p.id))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+    .map((p) => ({ id: p.id, nombre: p.nombre, especialidad: p.especialidad }))
+
+  return { centro: publico, abierto: true, profesionales, sedes: listarSedes(centro.id) }
+}
+
+/** Horarios que se le ofrecen a un paciente: libres y todavía no pasados. */
+export function slotsPublicos(
+  centroId: string,
+  profesionalId: string,
+  fecha: string,
+  duracionMin: number,
+): Franja[] {
+  const db = cargar()
+  const centro = db.centros.find((c) => c.id === centroId)
+  if (!centro?.reservas_publicas) return []
+  if (fecha < hoyISO() || fecha > sumarDias(hoyISO(), DIAS_RESERVA_ONLINE)) return []
+
+  return slotsDisponibles(profesionalId, fecha, duracionMin, centroId).libres.filter(
+    (f) => !yaPaso(fecha, f.inicio),
+  )
+}
+
+function soloDigitos(texto: string): string {
+  return texto.replace(/\D/g, '')
+}
+
+export function reservarTurnoPublico(input: {
+  centroId: string
+  profesionalId: string
+  fecha: string
+  horaInicio: string
+  sedeId: string | null
+  nombre: string
+  apellido: string
+  telefono: string
+  email: string | null
+  dni: string | null
+  cobertura: Cobertura
+  obraSocial: string | null
+  primeraVez: boolean
+  comentario: string | null
+}): Resultado {
+  const db = cargar()
+  const centro = db.centros.find((c) => c.id === input.centroId)
+  if (!centro?.reservas_publicas) {
+    return { error: 'Las reservas online de este centro están cerradas. Escribinos para coordinar tu turno.' }
+  }
+
+  const profesional = db.perfiles.find(
+    (p) => p.id === input.profesionalId && p.centro_id === centro.id && p.activo,
+  )
+  if (!profesional) return { error: 'Ese profesional ya no está tomando turnos.' }
+
+  const nombre = input.nombre.trim()
+  const apellido = input.apellido.trim()
+  const telefono = input.telefono.trim()
+  if (!nombre || !apellido) return { error: 'Poné tu nombre y tu apellido.' }
+  if (soloDigitos(telefono).length < 8) return { error: 'Dejanos un teléfono de contacto válido.' }
+  if (input.cobertura === 'obra_social' && !input.obraSocial?.trim()) {
+    return { error: 'Decinos cuál es tu obra social.' }
+  }
+
+  const hoy = hoyISO()
+  if (input.fecha < hoy) return { error: 'Esa fecha ya pasó.' }
+  if (input.fecha > sumarDias(hoy, DIAS_RESERVA_ONLINE)) {
+    return { error: 'Por ahora se puede reservar hasta ' + DIAS_RESERVA_ONLINE + ' días para adelante.' }
+  }
+  if (yaPaso(input.fecha, input.horaInicio)) return { error: 'Ese horario ya pasó. Elegí otro.' }
+
+  const duracion = centro.duracion_turno_min
+  const horaFin = desdeMinutos(minutos(input.horaInicio) + duracion)
+  if (!estaEnHorarioDeAtencion(input.profesionalId, input.fecha, input.horaInicio, horaFin)) {
+    return { error: 'Ese horario no está entre los de atención. Elegí uno de los que aparecen libres.' }
+  }
+  if (hayChoque(input.profesionalId, input.fecha, input.horaInicio, horaFin)) {
+    return { error: 'Justo te ganaron de mano ese horario. Elegí otro, por favor.' }
+  }
+
+  // ¿Ya está en la base? Buscamos por DNI y, si no, por teléfono + apellido.
+  const dni = input.dni?.trim() || null
+  const tel = soloDigitos(telefono)
+  let paciente =
+    (dni ? db.pacientes.find((p) => p.centro_id === centro.id && p.dni === dni) : undefined) ??
+    db.pacientes.find(
+      (p) =>
+        p.centro_id === centro.id &&
+        !!p.telefono &&
+        soloDigitos(p.telefono) === tel &&
+        p.apellido.toLowerCase() === apellido.toLowerCase(),
+    )
+
+  if (paciente && !paciente.activo) {
+    return { error: 'No pudimos tomar la reserva. Escribinos y lo vemos juntos.' }
+  }
+
+  if (!paciente) {
+    paciente = {
+      id: id(), centro_id: centro.id, nombre, apellido, dni, telefono,
+      email: input.email?.trim() || null, fecha_nacimiento: null,
+      cobertura: input.cobertura,
+      obra_social: input.cobertura === 'obra_social' ? (input.obraSocial?.trim() ?? null) : null,
+      nro_afiliado: null, notas: null, activo: true, created_at: new Date().toISOString(),
+    }
+    db.pacientes.push(paciente)
+  } else {
+    // Datos de contacto frescos, sin pisar la ficha clínica.
+    paciente.telefono = telefono
+    if (input.email?.trim()) paciente.email = input.email.trim()
+  }
+
+  // Freno simple contra reservas repetidas.
+  const vigentesDelPaciente = db.turnos.filter(
+    (t) => t.paciente_id === paciente!.id && t.fecha >= hoy && ESTADOS_VIGENTES.includes(t.estado),
+  )
+  if (vigentesDelPaciente.some((t) => t.fecha === input.fecha)) {
+    return { error: 'Ya tenés un turno reservado para ese día.' }
+  }
+  if (vigentesDelPaciente.length >= 3) {
+    return { error: 'Ya tenés varios turnos reservados. Escribinos si necesitás otro más.' }
+  }
+
+  const historial = db.turnos.filter((t) => t.paciente_id === paciente.id).length
+  const tipoSesion = input.primeraVez || historial === 0 ? 'Ingreso' : 'Kinesiología'
+
+  const turnoId = id()
+  db.turnos.push({
+    id: turnoId, centro_id: centro.id, profesional_id: profesional.id, paciente_id: paciente.id,
+    sede_id: input.sedeId, fecha: input.fecha, hora_inicio: input.horaInicio + ':00',
+    hora_fin: horaFin + ':00', tipo_sesion: tipoSesion, estado: 'confirmado',
+    motivo: input.comentario?.trim() || null, origen: 'online',
+    created_at: new Date().toISOString(),
+  })
+  agregarEvento(
+    db, turnoId, 'reserva',
+    'El paciente lo sacó desde la página pública' + (input.comentario?.trim() ? ' — ' + input.comentario.trim() : ''),
+    null,
+  )
+
+  guardar(db)
+  return { ok: 'Listo, tu turno quedó reservado.', id: turnoId }
+}
+
 export function actualizarCentro(
   centroId: string,
-  campos: { nombre: string; duracion_turno_min: number; kinesiologos_pueden_crear_turnos: boolean },
+  campos: {
+    nombre: string
+    telefono: string | null
+    duracion_turno_min: number
+    kinesiologos_pueden_crear_turnos: boolean
+  },
 ): Resultado {
   const db = cargar()
   const c = db.centros.find((x) => x.id === centroId)

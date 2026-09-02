@@ -1,8 +1,5 @@
-'use client'
-
+import type { Metadata } from 'next'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
 import {
   IconoCheck,
   IconoHistorial,
@@ -12,24 +9,48 @@ import {
   IconoSede,
   IconoX,
 } from '@/componentes/Iconos'
+import EnviarWhatsApp from '@/componentes/EnviarWhatsApp'
 import { ChipEstado, Dato, Encabezado, Vacio } from '@/componentes/ui'
 import {
   COBERTURAS,
   ESTADOS_CERRADOS,
   nombreCompleto,
-  type Observacion,
-  type Perfil,
-  type TurnoEvento,
-  type TurnoExpandido,
+  tipoSesionDe,
 } from '@/lib/dominio'
+import {
+  eventosDeTurno,
+  listarProfesionales,
+  observacionDeTurno,
+  slotsDisponibles,
+  turnoPorId,
+} from '@/lib/datos'
 import { formatearFechaCorta, formatearFechaLarga, hhmm, minutos, yaPaso } from '@/lib/fechas'
-import * as almacen from '@/lib/local/almacen'
-import type { Franja } from '@/lib/local/almacen'
-import Protegido from '@/lib/local/Protegido'
-import type { Sesion } from '@/lib/local/sesion'
+import { exigirSesion } from '@/lib/sesion'
+import { clienteServidor } from '@/lib/supabase/servidor'
+import { mensajeSegunTipo } from '@/lib/whatsapp'
 import { marcarTurno } from '../acciones'
 import AccionesTurno from './AccionesTurno'
+import CambiarTipo from './CambiarTipo'
 import FormObservacion from './FormObservacion'
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}): Promise<Metadata> {
+  const { id: turnoId } = await params
+  const supabase = await clienteServidor()
+  const turno = await turnoPorId(supabase, turnoId)
+
+  if (!turno) {
+    return { title: 'Turno no encontrado' }
+  }
+
+  const paciente = nombreCompleto(turno.paciente)
+  return {
+    title: `${paciente} · ${formatearFechaCorta(turno.fecha)}`,
+  }
+}
 
 const ETIQUETA_EVENTO: Record<string, string> = {
   creado: 'Turno creado',
@@ -38,58 +59,48 @@ const ETIQUETA_EVENTO: Record<string, string> = {
   realizado: 'Marcado como realizado',
   ausente: 'Marcado como ausente',
   observacion: 'Observación clínica cargada',
+  tipo: 'Tipo de sesión cambiado',
+  reserva: 'Reservado desde la página pública',
 }
 
-function Contenido({ sesion, turnoId }: { sesion: Sesion; turnoId: string }) {
-  const [turno, setTurno] = useState<TurnoExpandido | null | undefined>(undefined)
-  const [observacion, setObservacion] = useState<Observacion | null>(null)
-  const [eventos, setEventos] = useState<TurnoEvento[]>([])
-  const [profesionales, setProfesionales] = useState<Perfil[]>([])
-  const [libres, setLibres] = useState<Franja[]>([])
+export default async function PaginaTurno({ params }: { params: Promise<{ id: string }> }) {
+  const { id: turnoId } = await params
+  const sesion = await exigirSesion()
+  const supabase = await clienteServidor()
 
-  const recargar = useCallback(() => {
-    const t = almacen.turnoPorId(turnoId)
-    setTurno(t)
-    setObservacion(almacen.observacionDeTurno(turnoId))
-    setEventos(almacen.eventosDeTurno(turnoId))
-    setProfesionales(almacen.listarProfesionales(sesion.centro.id, false))
+  const turno = await turnoPorId(supabase, turnoId)
 
-    if (t) {
-      const abierto = !ESTADOS_CERRADOS.includes(t.estado)
-      const puedeEditar = t.profesional_id === sesion.perfil.id || sesion.esAdmin
-      if (abierto && puedeEditar) {
-        const duracion = minutos(t.hora_fin) - minutos(t.hora_inicio)
-        setLibres(almacen.slotsDisponibles(t.profesional_id, t.fecha, duracion, t.id).libres)
-      } else {
-        setLibres([])
-      }
-    }
-  }, [turnoId, sesion.centro.id, sesion.perfil.id, sesion.esAdmin])
-
-  useEffect(recargar, [recargar])
-
-  if (turno === undefined) {
+  if (!turno) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <div className="size-8 animate-spin rounded-full border-2 border-marca-200 border-t-marca-600" />
-      </div>
+      <Vacio
+        Icono={IconoPacientes}
+        titulo="No encontramos el turno"
+        texto="Puede que haya sido eliminado."
+        accion={
+          <Link href="/agenda" className="boton-secundario boton-chico">
+            Volver a la agenda
+          </Link>
+        }
+      />
     )
   }
-  if (turno === null) {
-    return <Vacio Icono={IconoPacientes} titulo="No encontramos el turno" texto="Puede que haya sido eliminado." />
-  }
 
-  const nombrePor = new Map(profesionales.map((p) => [p.id, p.nombre]))
-  const propio = turno.profesional_id === sesion.perfil.id
-  const puedeEditar = propio || sesion.esAdmin
+  const puedeEditar = turno.profesional_id === sesion.perfil.id || sesion.esAdmin
   const abierto = !ESTADOS_CERRADOS.includes(turno.estado)
   const llego = yaPaso(turno.fecha, hhmm(turno.hora_inicio))
   const duracion = minutos(turno.hora_fin) - minutos(turno.hora_inicio)
+  const tipo = tipoSesionDe(turno.tipo_sesion)
 
-  function marcar(fd: FormData) {
-    marcarTurno(sesion, fd)
-    recargar()
-  }
+  const [observacion, eventos, profesionales, libres] = await Promise.all([
+    observacionDeTurno(supabase, turnoId),
+    eventosDeTurno(supabase, turnoId),
+    listarProfesionales(supabase, false),
+    abierto && puedeEditar
+      ? slotsDisponibles(supabase, turno.profesional_id, turno.fecha, duracion, turno.id).then((d) => d.libres)
+      : Promise.resolve([]),
+  ])
+
+  const nombrePor = new Map(profesionales.map((p) => [p.id, p.nombre]))
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -102,6 +113,19 @@ function Contenido({ sesion, turnoId }: { sesion: Sesion; turnoId: string }) {
         }
         acciones={
           <>
+            <EnviarWhatsApp
+              telefono={turno.paciente?.telefono ?? null}
+              etiqueta="WhatsApp"
+              mensaje={mensajeSegunTipo({
+                centro: sesion.centro.nombre,
+                paciente: turno.paciente ? turno.paciente.nombre : 'paciente',
+                profesional: turno.profesional?.nombre,
+                fecha: turno.fecha,
+                hora: hhmm(turno.hora_inicio),
+                sede: turno.sede?.nombre,
+                tipo: turno.tipo_sesion,
+              })}
+            />
             <Link href={'/pacientes/' + turno.paciente_id} className="boton-secundario boton-chico">
               Ver ficha
             </Link>
@@ -121,12 +145,25 @@ function Contenido({ sesion, turnoId }: { sesion: Sesion; turnoId: string }) {
 
           <dl className="grid gap-4 sm:grid-cols-2">
             <Dato etiqueta="Profesional">{turno.profesional?.nombre ?? '—'}</Dato>
-            <Dato etiqueta="Tipo de sesión">{turno.tipo_sesion}</Dato>
+            <Dato etiqueta="Tipo de sesión">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={'chip ' + tipo.chip}>
+                  <span className={'size-1.5 rounded-full ' + tipo.punto} />
+                  {tipo.etiqueta}
+                </span>
+                {puedeEditar && turno.estado !== 'cancelado' && (
+                  <CambiarTipo turnoId={turno.id} tipoActual={turno.tipo_sesion} />
+                )}
+              </div>
+            </Dato>
             <Dato etiqueta="Duración">{duracion} minutos</Dato>
             <Dato etiqueta="Cobertura">
               {turno.paciente?.cobertura === 'obra_social'
                 ? (turno.paciente.obra_social ?? COBERTURAS.obra_social)
                 : COBERTURAS.particular}
+            </Dato>
+            <Dato etiqueta="Cómo se cargó">
+              {turno.origen === 'online' ? 'El paciente lo reservó online' : 'Lo cargó el centro'}
             </Dato>
             {turno.sede && (
               <Dato etiqueta="Sede">
@@ -150,7 +187,7 @@ function Contenido({ sesion, turnoId }: { sesion: Sesion; turnoId: string }) {
             </p>
 
             <div className="flex flex-wrap gap-2">
-              <form action={marcar}>
+              <form action={marcarTurno}>
                 <input type="hidden" name="turno_id" value={turno.id} />
                 <input type="hidden" name="estado" value="realizado" />
                 <button type="submit" disabled={!llego || turno.estado === 'realizado'} className="boton-acento boton-chico">
@@ -159,7 +196,7 @@ function Contenido({ sesion, turnoId }: { sesion: Sesion; turnoId: string }) {
                 </button>
               </form>
 
-              <form action={marcar}>
+              <form action={marcarTurno}>
                 <input type="hidden" name="turno_id" value={turno.id} />
                 <input type="hidden" name="estado" value="ausente" />
                 <button type="submit" disabled={!llego || turno.estado === 'ausente'} className="boton-secundario boton-chico">
@@ -178,21 +215,19 @@ function Contenido({ sesion, turnoId }: { sesion: Sesion; turnoId: string }) {
               Cambios en el turno
             </h2>
             <AccionesTurno
-              sesion={sesion}
               turnoId={turno.id}
               fecha={turno.fecha}
               horaActual={hhmm(turno.hora_inicio)}
               libres={libres}
-              onCambio={recargar}
             />
           </section>
         )}
 
-        {turno.estado === 'realizado' && propio && (
-          <FormObservacion sesion={sesion} turnoId={turno.id} observacion={observacion} onGuardado={recargar} />
+        {turno.estado === 'realizado' && puedeEditar && (
+          <FormObservacion turnoId={turno.id} observacion={observacion} />
         )}
 
-        {turno.estado === 'realizado' && !propio && observacion && (
+        {turno.estado === 'realizado' && !puedeEditar && observacion && (
           <section className="tarjeta p-5">
             <h2 className="mb-4 flex items-center gap-2 font-semibold text-slate-900">
               <IconoNota className="size-5 text-marca-600" />
@@ -250,9 +285,4 @@ function Contenido({ sesion, turnoId }: { sesion: Sesion; turnoId: string }) {
       </div>
     </div>
   )
-}
-
-export default function PaginaTurno() {
-  const params = useParams<{ id: string }>()
-  return <Protegido>{(sesion) => <Contenido sesion={sesion} turnoId={params.id} />}</Protegido>
 }

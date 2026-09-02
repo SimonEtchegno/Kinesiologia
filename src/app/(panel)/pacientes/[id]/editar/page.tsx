@@ -1,42 +1,59 @@
-'use client'
-
-import { useParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import type { Metadata } from 'next'
+import Link from 'next/link'
 import { Encabezado, Vacio } from '@/componentes/ui'
 import { IconoPacientes } from '@/componentes/Iconos'
-import type { Paciente } from '@/lib/dominio'
-import * as almacen from '@/lib/local/almacen'
-import Protegido from '@/lib/local/Protegido'
-import type { Sesion } from '@/lib/local/sesion'
+import { pacientePorId } from '@/lib/datos'
+import { exigirSesion } from '@/lib/sesion'
+import { clienteServidor } from '@/lib/supabase/servidor'
 import FormularioPaciente from '../../FormularioPaciente'
 
-function Contenido({ sesion, pacienteId }: { sesion: Sesion; pacienteId: string }) {
-  const [paciente, setPaciente] = useState<Paciente | null | undefined>(undefined)
-
-  useEffect(() => {
-    setPaciente(almacen.pacientePorId(pacienteId))
-  }, [pacienteId])
-
-  if (paciente === undefined) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <div className="size-8 animate-spin rounded-full border-2 border-marca-200 border-t-marca-600" />
-      </div>
-    )
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}): Promise<Metadata> {
+  const { id } = await params
+  const supabase = await clienteServidor()
+  const paciente = await pacientePorId(supabase, id)
+  if (!paciente) return { title: 'Paciente no encontrado' }
+  return {
+    title: `Editar ${paciente.apellido}, ${paciente.nombre}`,
   }
-  if (paciente === null) {
-    return <Vacio Icono={IconoPacientes} titulo="No encontramos al paciente" texto="Puede que haya sido eliminado." />
+}
+
+export default async function PaginaEditarPaciente({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id: pacienteId } = await params
+  await exigirSesion()
+  const supabase = await clienteServidor()
+
+  const paciente = await pacientePorId(supabase, pacienteId)
+
+  if (!paciente) {
+    return (
+      <Vacio
+        Icono={IconoPacientes}
+        titulo="No encontramos al paciente"
+        texto="Puede que haya sido eliminado."
+        accion={
+          <Link href="/pacientes" className="boton-secundario boton-chico">
+            Volver a la lista
+          </Link>
+        }
+      />
+    )
   }
 
   return (
     <div className="mx-auto max-w-3xl">
-      <Encabezado titulo="Editar paciente" descripcion={paciente.apellido + ', ' + paciente.nombre} />
-      <FormularioPaciente sesion={sesion} paciente={paciente} />
+      <Encabezado
+        titulo="Editar paciente"
+        descripcion={paciente.apellido + ', ' + paciente.nombre}
+      />
+      <FormularioPaciente paciente={paciente} />
     </div>
   )
-}
-
-export default function PaginaEditarPaciente() {
-  const params = useParams<{ id: string }>()
-  return <Protegido>{(sesion) => <Contenido sesion={sesion} pacienteId={params.id} />}</Protegido>
 }

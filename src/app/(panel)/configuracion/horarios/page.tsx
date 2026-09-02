@@ -1,43 +1,33 @@
-'use client'
-
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
-import { Suspense, useCallback, useEffect, useState } from 'react'
 import { IconoReloj, IconoSede, IconoX } from '@/componentes/Iconos'
 import { Encabezado, Vacio } from '@/componentes/ui'
-import type { HorarioAtencion, Perfil, Sede } from '@/lib/dominio'
 import { DIAS_SEMANA, hhmm } from '@/lib/fechas'
-import * as almacen from '@/lib/local/almacen'
-import Protegido from '@/lib/local/Protegido'
-import type { Sesion } from '@/lib/local/sesion'
+import { horariosDe, listarProfesionales, listarSedes } from '@/lib/datos'
+import { exigirSesion } from '@/lib/sesion'
+import { clienteServidor } from '@/lib/supabase/servidor'
 import { borrarHorario } from '../acciones'
 import FormHorario from './FormHorario'
 
-function Contenido({ sesion }: { sesion: Sesion }) {
-  const sp = useSearchParams()
-  const [profesionales, setProfesionales] = useState<Perfil[]>([])
-  const [sedes, setSedes] = useState<Sede[]>([])
-  const [horarios, setHorarios] = useState<HorarioAtencion[]>([])
+export default async function PaginaHorarios({
+  searchParams,
+}: {
+  searchParams: Promise<{ prof?: string }>
+}) {
+  const sesion = await exigirSesion()
+  const sp = await searchParams
+  const supabase = await clienteServidor()
+
+  const [profesionales, sedes] = await Promise.all([
+    listarProfesionales(supabase),
+    listarSedes(supabase),
+  ])
 
   const profesionalId =
-    sesion.esAdmin && sp.get('prof') && profesionales.some((p) => p.id === sp.get('prof'))
-      ? sp.get('prof')!
+    sesion.esAdmin && sp.prof && profesionales.some((p) => p.id === sp.prof)
+      ? sp.prof
       : sesion.perfil.id
 
-  const recargar = useCallback(() => {
-    setProfesionales(almacen.listarProfesionales(sesion.centro.id))
-    setSedes(almacen.listarSedes(sesion.centro.id))
-  }, [sesion.centro.id])
-
-  useEffect(recargar, [recargar])
-  useEffect(() => {
-    setHorarios(almacen.horariosDe(profesionalId))
-  }, [profesionalId])
-
-  function alBorrar(fd: FormData) {
-    borrarHorario(fd)
-    setHorarios(almacen.horariosDe(profesionalId))
-  }
+  const horarios = await horariosDe(supabase, profesionalId)
 
   const nombreSede = new Map(sedes.map((s) => [s.id, s.nombre]))
   const orden = [1, 2, 3, 4, 5, 6, 0]
@@ -83,12 +73,7 @@ function Contenido({ sesion }: { sesion: Sesion }) {
       <div className="space-y-5">
         <section className="tarjeta p-5">
           <h2 className="mb-4 font-semibold text-slate-900">Agregar una franja</h2>
-          <FormHorario
-            sesion={sesion}
-            profesionalId={profesionalId}
-            sedes={sedes}
-            onGuardado={() => setHorarios(almacen.horariosDe(profesionalId))}
-          />
+          <FormHorario profesionalId={profesionalId} sedes={sedes} />
         </section>
 
         <section className="tarjeta overflow-hidden">
@@ -123,7 +108,7 @@ function Contenido({ sesion }: { sesion: Sesion }) {
                       <ul className="flex flex-wrap gap-2">
                         {franjas.map((f) => (
                           <li key={f.id}>
-                            <form action={alBorrar} className="group">
+                            <form action={borrarHorario} className="group">
                               <input type="hidden" name="id" value={f.id} />
                               <span className="inline-flex items-center gap-2 rounded-lg bg-marca-50 py-1.5 pr-1.5 pl-3 text-sm font-semibold tabular-nums text-marca-800 ring-1 ring-inset ring-marca-200">
                                 {hhmm(f.hora_inicio)}–{hhmm(f.hora_fin)}
@@ -154,13 +139,5 @@ function Contenido({ sesion }: { sesion: Sesion }) {
         </section>
       </div>
     </div>
-  )
-}
-
-export default function PaginaHorarios() {
-  return (
-    <Suspense fallback={null}>
-      <Protegido>{(sesion) => <Contenido sesion={sesion} />}</Protegido>
-    </Suspense>
   )
 }

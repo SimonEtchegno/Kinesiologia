@@ -1,6 +1,9 @@
-import * as almacen from '@/lib/local/almacen'
+'use server'
+
+import { revalidatePath } from 'next/cache'
 import { esISO } from '@/lib/fechas'
-import type { Sesion } from '@/lib/local/sesion'
+import { exigirSesion } from '@/lib/sesion'
+import { clienteServidor } from '@/lib/supabase/servidor'
 
 export interface Resultado {
   error?: string
@@ -8,7 +11,20 @@ export interface Resultado {
   id?: string
 }
 
-function leer(datos: FormData): almacen.CamposPaciente | string {
+interface CamposPaciente {
+  nombre: string
+  apellido: string
+  dni: string | null
+  telefono: string | null
+  email: string | null
+  fecha_nacimiento: string | null
+  cobertura: 'particular' | 'obra_social'
+  obra_social: string | null
+  nro_afiliado: string | null
+  notas: string | null
+}
+
+function leer(datos: FormData): CamposPaciente | string {
   const nombre = String(datos.get('nombre') ?? '').trim()
   const apellido = String(datos.get('apellido') ?? '').trim()
   if (!nombre || !apellido) return 'El nombre y el apellido son obligatorios.'
@@ -34,7 +50,7 @@ function leer(datos: FormData): almacen.CamposPaciente | string {
     telefono: String(datos.get('telefono') ?? '').trim() || null,
     email,
     fecha_nacimiento: nacimiento || null,
-    cobertura,
+    cobertura: cobertura as 'particular' | 'obra_social',
     obra_social: cobertura === 'obra_social' ? obraSocial : null,
     nro_afiliado:
       cobertura === 'obra_social' ? String(datos.get('nro_afiliado') ?? '').trim() || null : null,
@@ -45,28 +61,76 @@ function leer(datos: FormData): almacen.CamposPaciente | string {
 // ============================================================
 // UC-08 — Dar de alta un paciente
 // ============================================================
-export function crearPaciente(sesion: Sesion, _previo: Resultado, datos: FormData): Resultado {
+export async function crearPaciente(_previo: Resultado, datos: FormData): Promise<Resultado> {
+  const sesion = await exigirSesion()
+  const supabase = await clienteServidor()
+
   const campos = leer(datos)
   if (typeof campos === 'string') return { error: campos }
-  return almacen.crearPaciente(sesion.centro.id, campos)
+
+  const { data, error } = await supabase
+    .from('pacientes')
+    .insert({
+      centro_id: sesion.centro.id,
+      created_by: sesion.perfil.id,
+      ...campos,
+    })
+    .select('id')
+    .single()
+
+  if (error) {
+    if (error.code === '23505') {
+      return { error: 'Ya existe un paciente con ese DNI en este centro.' }
+    }
+    return { error: error.message }
+  }
+
+  revalidatePath('/pacientes')
+  revalidatePath('/agenda')
+  return { ok: 'Paciente dado de alta.', id: data.id }
 }
 
 // ============================================================
 // UC-07 — Editar datos básicos
 // ============================================================
-export function actualizarPaciente(_sesion: Sesion, _previo: Resultado, datos: FormData): Resultado {
+export async function actualizarPaciente(_previo: Resultado, datos: FormData): Promise<Resultado> {
+  await exigirSesion()
+  const supabase = await clienteServidor()
+
   const id = String(datos.get('id') ?? '')
   if (!id) return { error: 'Falta el paciente.' }
 
   const campos = leer(datos)
   if (typeof campos === 'string') return { error: campos }
 
-  return almacen.actualizarPaciente(id, campos)
+  const { error } = await supabase
+    .from('pacientes')
+    .update(campos)
+    .eq('id', id)
+
+  if (error) {
+    if (error.code === '23505') {
+      return { error: 'Ya existe un paciente con ese DNI en este centro.' }
+    }
+    return { error: error.message }
+  }
+
+  revalidatePath('/pacientes')
+  revalidatePath('/pacientes/' + id)
+  return { ok: 'Cambios guardados.', id }
 }
 
-/** Baja lógica: el historial se conserva. */
-export function cambiarActivoPaciente(datos: FormData): void {
+/** Baja lógica / reactivación: el historial se conserva. */
+export async function cambiarActivoPaciente(datos: FormData): Promise<void> {
+  await exigirSesion()
+  const supabase = await clienteServidor()
+
   const id = String(datos.get('id') ?? '')
   const activo = datos.get('activo') === 'si'
-  if (id) almacen.cambiarActivoPaciente(id, activo)
+  if (!id) return
+
+  await supabase.from('pacientes').update({ activo }).eq('id', id)
+
+  revalidatePath('/pacientes')
+  revalidatePath('/pacientes/' + id)
 }

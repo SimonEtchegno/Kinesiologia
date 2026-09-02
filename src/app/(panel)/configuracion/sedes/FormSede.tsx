@@ -3,16 +3,11 @@
 import { useActionState } from 'react'
 import AvisoAccion from '@/componentes/AvisoAccion'
 import { IconoMas } from '@/componentes/Iconos'
-import type { Sesion } from '@/lib/local/sesion'
-import { crearSede, type Resultado } from '../acciones'
+import { crearSede } from '../acciones'
 
 /** Alta de una sede nueva del centro. */
-export default function FormSede({ sesion, onCreada }: { sesion: Sesion; onCreada: () => void }) {
-  const [estado, accion, pendiente] = useActionState<Resultado, FormData>((prev, fd) => {
-    const r = crearSede(sesion, prev, fd)
-    if (r.ok) onCreada()
-    return r
-  }, {})
+export default function FormSede() {
+  const [estado, accion, pendiente] = useActionState(crearSede, {})
 
   return (
     <form action={accion} key={estado.id ?? 'nueva'}>

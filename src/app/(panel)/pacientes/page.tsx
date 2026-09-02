@@ -1,35 +1,29 @@
-'use client'
-
+import type { Metadata } from 'next'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { Suspense, useEffect, useState } from 'react'
 import { IconoBuscar, IconoMas, IconoPacientes } from '@/componentes/Iconos'
 import { Encabezado, Vacio } from '@/componentes/ui'
-import { COBERTURAS, iniciales, type Paciente } from '@/lib/dominio'
+import { COBERTURAS, iniciales } from '@/lib/dominio'
+import { buscarPacientes } from '@/lib/datos'
 import { edad } from '@/lib/fechas'
-import * as almacen from '@/lib/local/almacen'
-import Protegido from '@/lib/local/Protegido'
-import type { Sesion } from '@/lib/local/sesion'
+import { exigirSesion } from '@/lib/sesion'
+import { clienteServidor } from '@/lib/supabase/servidor'
 
-function Contenido({ sesion }: { sesion: Sesion }) {
-  const router = useRouter()
-  const sp = useSearchParams()
-  const q = sp.get('q') ?? ''
-  const verInactivos = sp.get('inactivos') === 'si'
+export const metadata: Metadata = {
+  title: 'Pacientes',
+}
 
-  const [pacientes, setPacientes] = useState<Paciente[]>([])
+export default async function PaginaPacientes({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; inactivos?: string }>
+}) {
+  await exigirSesion()
+  const sp = await searchParams
+  const q = (sp.q ?? '').trim()
+  const verInactivos = sp.inactivos === 'si'
 
-  useEffect(() => {
-    setPacientes(almacen.buscarPacientes(sesion.centro.id, q, { incluirInactivos: verInactivos }))
-  }, [sesion.centro.id, q, verInactivos])
-
-  function buscar(fd: FormData) {
-    const texto = String(fd.get('q') ?? '')
-    const p = new URLSearchParams()
-    if (texto) p.set('q', texto)
-    if (verInactivos) p.set('inactivos', 'si')
-    router.push('/pacientes?' + p.toString())
-  }
+  const supabase = await clienteServidor()
+  const pacientes = await buscarPacientes(supabase, q, { incluirInactivos: verInactivos })
 
   return (
     <>
@@ -46,7 +40,8 @@ function Contenido({ sesion }: { sesion: Sesion }) {
         }
       />
 
-      <form action={buscar} className="mb-5 flex flex-col gap-3 no-imprimir sm:flex-row sm:items-center">
+      <form method="GET" action="/pacientes" className="mb-5 flex flex-col gap-3 no-imprimir sm:flex-row sm:items-center">
+        {verInactivos && <input type="hidden" name="inactivos" value="si" />}
         <div className="relative min-w-0 sm:max-w-md sm:flex-1">
           <IconoBuscar className="pointer-events-none absolute top-1/2 left-3 size-[1.1rem] -translate-y-1/2 text-slate-400" />
           <input
@@ -192,13 +187,5 @@ function Contenido({ sesion }: { sesion: Sesion }) {
         </>
       )}
     </>
-  )
-}
-
-export default function PaginaPacientes() {
-  return (
-    <Suspense fallback={null}>
-      <Protegido>{(sesion) => <Contenido sesion={sesion} />}</Protegido>
-    </Suspense>
   )
 }

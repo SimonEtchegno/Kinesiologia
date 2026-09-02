@@ -2,22 +2,45 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useActionState, useState } from 'react'
-import { IconoAlerta, IconoReloj } from '@/componentes/Iconos'
+import { useActionState, useCallback, useEffect, useState } from 'react'
+import { IconoAlerta, IconoCheck, IconoReloj } from '@/componentes/Iconos'
+import EnviarWhatsApp from '@/componentes/EnviarWhatsApp'
 import SelectorPaciente from '@/componentes/SelectorPaciente'
-import type { Franja } from '@/lib/local/almacen'
-import { TIPOS_SESION, type Paciente, type Perfil, type Sede } from '@/lib/dominio'
+import SelectTipoSesion from '@/componentes/SelectTipoSesion'
+import type { Franja } from '@/lib/datos'
+import {
+  esIngreso,
+  TIPO_INGRESO,
+  TIPO_SESION_POR_DEFECTO,
+  type Centro,
+  type Paciente,
+  type Perfil,
+  type Sede,
+} from '@/lib/dominio'
 import { hhmm } from '@/lib/fechas'
-import type { Sesion } from '@/lib/local/sesion'
-import { crearTurno, type Resultado } from '../acciones'
+import { mensajeSegunTipo } from '@/lib/whatsapp'
+import { crearTurno } from '../acciones'
+
+interface TurnoCreado {
+  id: string
+  tipo: string
+  fecha: string
+  hora: string
+  profesional: string
+  sede: string | null
+  pacienteNombre: string
+  pacienteTelefono: string | null
+}
 
 interface Props {
-  sesion: Sesion
+  centro: Centro
   fecha: string
   profesionalId: string
   profesionales: Perfil[]
   sedes: Sede[]
   pacientes: Paciente[]
+  /** Ids de pacientes que ya tuvieron algún turno: si no está acá, es un ingreso. */
+  pacientesConTurnoPrevio: string[]
   libres: Franja[]
   ocupados: Franja[]
   atiende: boolean
@@ -27,12 +50,13 @@ interface Props {
 }
 
 export default function FormularioTurno({
-  sesion,
+  centro,
   fecha,
   profesionalId,
   profesionales,
   sedes,
   pacientes,
+  pacientesConTurnoPrevio,
   libres,
   ocupados,
   atiende,
@@ -41,13 +65,53 @@ export default function FormularioTurno({
   pacienteInicial,
 }: Props) {
   const router = useRouter()
-  const [estado, accion, pendiente] = useActionState<Resultado, FormData>((prev, fd) => {
-    const r = crearTurno(sesion, prev, fd)
-    if (r.ok) router.push('/agenda?fecha=' + fecha + '&vista=dia&nuevo=' + r.id)
+  const [creado, setCreado] = useState<TurnoCreado | null>(null)
+  const [estado, accion, pendiente] = useActionState(async (prev: Awaited<ReturnType<typeof crearTurno>>, fd: FormData) => {
+    const r = await crearTurno(prev, fd)
+    if (r.ok && r.id) {
+      const pacienteId = String(fd.get('paciente_id') ?? '')
+      const esNuevo = pacienteId === '__nuevo'
+      const existente = pacientes.find((p) => p.id === pacienteId)
+      setCreado({
+        id: r.id,
+        tipo: String(fd.get('tipo_sesion') ?? ''),
+        fecha: String(fd.get('fecha') ?? fecha),
+        hora: String(fd.get('hora_inicio') ?? ''),
+        profesional: profesionales.find((p) => p.id === String(fd.get('profesional_id')))?.nombre ?? '',
+        sede: sedes.find((s) => s.id === String(fd.get('sede_id')))?.nombre ?? null,
+        pacienteNombre: esNuevo
+          ? String(fd.get('nuevo_nombre') ?? '').trim()
+          : (existente?.nombre ?? ''),
+        pacienteTelefono: esNuevo
+          ? String(fd.get('nuevo_telefono') ?? '').trim() || null
+          : (existente?.telefono ?? null),
+      })
+    }
     return r
   }, {})
   const [hora, setHora] = useState('')
   const [manual, setManual] = useState(false)
+  const [tipo, setTipo] = useState<string>(TIPO_SESION_POR_DEFECTO)
+  const [tipoAMano, setTipoAMano] = useState(false)
+  const [primeraVez, setPrimeraVez] = useState(false)
+
+  const tuvoTurnos = new Set(pacientesConTurnoPrevio)
+
+  // Un paciente sin turnos previos arranca marcado como Ingreso; si el
+  // profesional ya eligió otro tipo a mano, no se lo pisamos.
+  const alElegirPaciente = useCallback(
+    (pacienteId: string) => {
+      const sinHistoria = pacienteId === '__nuevo' || (!!pacienteId && !tuvoTurnos.has(pacienteId))
+      setPrimeraVez(sinHistoria)
+      if (!tipoAMano) setTipo(sinHistoria ? TIPO_INGRESO : TIPO_SESION_POR_DEFECTO)
+    },
+    [tipoAMano, tuvoTurnos],
+  )
+
+  useEffect(() => {
+    if (pacienteInicial) alElegirPaciente(pacienteInicial)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pacienteInicial])
 
   // Cambiar profesional o fecha recarga la grilla de horarios desde el servidor.
   function recargar(cambios: { prof?: string; fecha?: string }) {
@@ -59,6 +123,53 @@ export default function FormularioTurno({
     if (pacienteInicial) p.set('paciente', pacienteInicial)
     setHora('')
     router.replace('/turnos/nuevo?' + p.toString())
+  }
+
+  if (creado) {
+    return (
+      <div className="mx-auto max-w-lg">
+        <div className="tarjeta-sombra p-7">
+          <span className="grid size-12 place-items-center rounded-xl2 bg-acento-50 text-acento-600">
+            <IconoCheck className="size-7" />
+          </span>
+          <h2 className="mt-4 text-xl font-semibold tracking-tight text-slate-900">
+            Turno de {creado.pacienteNombre || 'el paciente'} cargado
+          </h2>
+          <p className="subtitulo mt-1 first-letter:uppercase">
+            {creado.fecha === fecha ? '' : creado.fecha + ' · '}
+            {hhmm(creado.hora)} con {creado.profesional}
+            {creado.sede ? ' · ' + creado.sede : ''}
+          </p>
+
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <EnviarWhatsApp
+              telefono={creado.pacienteTelefono}
+              variante="acento"
+              etiqueta={esIngreso(creado.tipo) ? 'WhatsApp de bienvenida' : 'Avisar por WhatsApp'}
+              autoAbrir={esIngreso(creado.tipo) && centro.whatsapp_ingreso_automatico}
+              mensaje={mensajeSegunTipo({
+                centro: centro.nombre,
+                paciente: creado.pacienteNombre.split(' ')[0] || creado.pacienteNombre,
+                profesional: creado.profesional,
+                fecha: creado.fecha,
+                hora: hhmm(creado.hora),
+                sede: creado.sede,
+                tipo: creado.tipo,
+              })}
+            />
+            <Link
+              href={'/agenda?fecha=' + creado.fecha + '&vista=dia'}
+              className="boton-secundario boton-chico"
+            >
+              Ir a la agenda
+            </Link>
+            <Link href={'/turnos/' + creado.id} className="boton-fantasma boton-chico">
+              Ver el turno
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -222,7 +333,11 @@ export default function FormularioTurno({
       {/* --- Paciente --- */}
       <section className="tarjeta p-5">
         <h2 className="mb-4 font-semibold text-slate-900">Paciente</h2>
-        <SelectorPaciente pacientes={pacientes} inicial={pacienteInicial} />
+        <SelectorPaciente
+          pacientes={pacientes}
+          inicial={pacienteInicial}
+          onCambio={alElegirPaciente}
+        />
       </section>
 
       {/* --- Detalle --- */}
@@ -233,13 +348,18 @@ export default function FormularioTurno({
             <label htmlFor="tipo_sesion" className="etiqueta">
               Tipo de sesión
             </label>
-            <select id="tipo_sesion" name="tipo_sesion" className="campo" defaultValue={TIPOS_SESION[0]}>
-              {TIPOS_SESION.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
+            <SelectTipoSesion
+              valor={tipo}
+              onCambio={(v) => {
+                setTipo(v)
+                setTipoAMano(true)
+              }}
+            />
+            {primeraVez && esIngreso(tipo) && (
+              <p className="ayuda text-violet-700">
+                Es la primera sesión de este paciente: queda cargada como ingreso.
+              </p>
+            )}
           </div>
 
           {sedes.length > 0 && (

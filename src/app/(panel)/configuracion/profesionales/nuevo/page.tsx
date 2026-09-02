@@ -1,22 +1,18 @@
-'use client'
-
 import { Encabezado } from '@/componentes/ui'
-import Protegido from '@/lib/local/Protegido'
+import { exigirAdmin } from '@/lib/sesion'
 import FormProfesional from '../FormProfesional'
 
 /** UC-10 — Dar de alta un kinesiólogo nuevo. */
-export default function PaginaNuevoProfesional() {
+export default async function PaginaNuevoProfesional() {
+  await exigirAdmin()
+
   return (
-    <Protegido soloAdmin>
-      {(sesion) => (
-        <div className="mx-auto max-w-2xl">
-          <Encabezado
-            titulo="Nuevo profesional"
-            descripcion="Le creamos la cuenta y su agenda propia, vacía."
-          />
-          <FormProfesional sesion={sesion} />
-        </div>
-      )}
-    </Protegido>
+    <div className="mx-auto max-w-2xl">
+      <Encabezado
+        titulo="Nuevo profesional"
+        descripcion="Le creamos la cuenta y su agenda propia, vacía."
+      />
+      <FormProfesional />
+    </div>
   )
 }

@@ -13,6 +13,7 @@ import {
   IconoSalir,
   IconoX,
 } from '@/componentes/Iconos'
+import BotonTema from '@/componentes/BotonTema'
 import { iniciales } from '@/lib/dominio'
 
 interface Props {
@@ -105,6 +106,9 @@ export default function Sidebar({ nombre, email, rolEtiqueta, centro, esAdmin, a
           </div>
         </div>
         <p className="truncate px-2 pb-2 text-xs text-slate-400">{email}</p>
+        <div className="mb-1">
+          <BotonTema />
+        </div>
         <form action={alSalir}>
           <button type="submit" className="boton-fantasma boton-chico w-full justify-start">
             <IconoSalir className="size-[1.05rem] text-slate-400" />
@@ -118,16 +122,19 @@ export default function Sidebar({ nombre, email, rolEtiqueta, centro, esAdmin, a
   return (
     <>
       {/* Barra superior solo mobile */}
-      <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-linea bg-white/90 px-4 py-3 backdrop-blur lg:hidden no-imprimir">
-        <button
-          type="button"
-          onClick={() => setAbierto(true)}
-          className="boton-fantasma boton-chico"
-          aria-label="Abrir menú"
-        >
-          <IconoMenu className="size-5" />
-        </button>
-        <span className="font-semibold tracking-tight text-slate-900">Kinesio</span>
+      <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-linea bg-white/90 px-4 py-3 backdrop-blur lg:hidden no-imprimir">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setAbierto(true)}
+            className="boton-fantasma boton-chico"
+            aria-label="Abrir menú"
+          >
+            <IconoMenu className="size-5" />
+          </button>
+          <span className="font-semibold tracking-tight text-slate-900">Kinesio</span>
+        </div>
+        <BotonTema compacto />
       </header>
 
       {/* Cajón mobile */}

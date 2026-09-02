@@ -1,29 +1,16 @@
-'use client'
-
 import Link from 'next/link'
-import { useCallback, useEffect, useState } from 'react'
 import { IconoSede } from '@/componentes/Iconos'
 import { Encabezado, Vacio } from '@/componentes/ui'
-import type { Sede } from '@/lib/dominio'
-import * as almacen from '@/lib/local/almacen'
-import Protegido from '@/lib/local/Protegido'
-import type { Sesion } from '@/lib/local/sesion'
+import { listarSedes } from '@/lib/datos'
+import { exigirAdmin } from '@/lib/sesion'
+import { clienteServidor } from '@/lib/supabase/servidor'
 import { cambiarActivaSede } from '../acciones'
 import FormSede from './FormSede'
 
-function Contenido({ sesion }: { sesion: Sesion }) {
-  const [sedes, setSedes] = useState<Sede[]>([])
-
-  const recargar = useCallback(() => {
-    setSedes(almacen.listarSedes(sesion.centro.id, false))
-  }, [sesion.centro.id])
-
-  useEffect(recargar, [recargar])
-
-  function alCambiarActiva(fd: FormData) {
-    cambiarActivaSede(fd)
-    recargar()
-  }
+export default async function PaginaSedes() {
+  await exigirAdmin()
+  const supabase = await clienteServidor()
+  const sedes = await listarSedes(supabase, false)
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -40,7 +27,7 @@ function Contenido({ sesion }: { sesion: Sesion }) {
       <div className="space-y-5">
         <section className="tarjeta p-5">
           <h2 className="mb-4 font-semibold text-slate-900">Agregar una sede</h2>
-          <FormSede sesion={sesion} onCreada={recargar} />
+          <FormSede />
         </section>
 
         <section className="tarjeta overflow-hidden">
@@ -74,7 +61,7 @@ function Contenido({ sesion }: { sesion: Sesion }) {
                     {s.direccion && <p className="text-sm text-slate-500">{s.direccion}</p>}
                   </div>
 
-                  <form action={alCambiarActiva} className="no-imprimir">
+                  <form action={cambiarActivaSede} className="no-imprimir">
                     <input type="hidden" name="id" value={s.id} />
                     <input type="hidden" name="activa" value={s.activa ? 'no' : 'si'} />
                     <button
@@ -91,13 +78,5 @@ function Contenido({ sesion }: { sesion: Sesion }) {
         </section>
       </div>
     </div>
-  )
-}
-
-export default function PaginaSedes() {
-  return (
-    <Protegido soloAdmin>
-      {(sesion) => <Contenido sesion={sesion} />}
-    </Protegido>
   )
 }

@@ -4,15 +4,11 @@ import Link from 'next/link'
 import { useActionState } from 'react'
 import AvisoAccion from '@/componentes/AvisoAccion'
 import { IconoCheck } from '@/componentes/Iconos'
-import type { Sesion } from '@/lib/local/sesion'
-import { crearProfesional, type Resultado } from '../acciones'
+import { crearProfesional } from '../acciones'
 
 /** UC-10 — Dar de alta un kinesiólogo nuevo. */
-export default function FormProfesional({ sesion }: { sesion: Sesion }) {
-  const [estado, accion, pendiente] = useActionState<Resultado, FormData>(
-    (prev, fd) => crearProfesional(sesion, prev, fd),
-    {},
-  )
+export default function FormProfesional() {
+  const [estado, accion, pendiente] = useActionState(crearProfesional, {})
 
   // Cuenta creada: mostramos la clave temporal una sola vez.
   if (estado.claveTemporal) {

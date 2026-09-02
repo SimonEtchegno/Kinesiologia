@@ -5,17 +5,18 @@ import { useRouter } from 'next/navigation'
 import { useActionState, useState } from 'react'
 import { IconoAlerta } from '@/componentes/Iconos'
 import { COBERTURAS, type Cobertura, type Paciente } from '@/lib/dominio'
-import type { Sesion } from '@/lib/local/sesion'
 import { actualizarPaciente, crearPaciente, type Resultado } from './acciones'
 
 /** UC-08 (alta) y edición de datos básicos de UC-07. */
-export default function FormularioPaciente({ sesion, paciente }: { sesion: Sesion; paciente?: Paciente }) {
+export default function FormularioPaciente({ paciente }: { paciente?: Paciente }) {
   const esEdicion = Boolean(paciente)
   const router = useRouter()
 
-  const [estado, accion, pendiente] = useActionState<Resultado, FormData>((prev, fd) => {
-    const r = esEdicion ? actualizarPaciente(sesion, prev, fd) : crearPaciente(sesion, prev, fd)
-    if (r.ok) router.push('/pacientes/' + (paciente?.id ?? r.id))
+  const [estado, accion, pendiente] = useActionState<Resultado, FormData>(async (prev, fd) => {
+    const r = esEdicion ? await actualizarPaciente(prev, fd) : await crearPaciente(prev, fd)
+    if (r.ok && (r.id || paciente?.id)) {
+      router.push('/pacientes/' + (r.id ?? paciente?.id))
+    }
     return r
   }, {})
 

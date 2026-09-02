@@ -1,58 +1,53 @@
-'use client'
-
-import { useRouter, useSearchParams } from 'next/navigation'
-import { Suspense, useEffect, useState } from 'react'
+import { redirect } from 'next/navigation'
 import { Encabezado } from '@/componentes/ui'
-import type { Franja } from '@/lib/local/almacen'
-import type { Paciente, Perfil, Sede } from '@/lib/dominio'
 import { esISO, formatearFechaLarga, hoyISO } from '@/lib/fechas'
-import * as almacen from '@/lib/local/almacen'
-import Protegido from '@/lib/local/Protegido'
-import type { Sesion } from '@/lib/local/sesion'
+import {
+  buscarPacientes,
+  listarProfesionales,
+  listarSedes,
+  pacientesConTurnoPrevio,
+  slotsDisponibles,
+} from '@/lib/datos'
+import { exigirSesion } from '@/lib/sesion'
+import { clienteServidor } from '@/lib/supabase/servidor'
 import FormularioTurno from './FormularioTurno'
 
-function Contenido({ sesion }: { sesion: Sesion }) {
-  const router = useRouter()
-  const sp = useSearchParams()
+export default async function PaginaNuevoTurno({
+  searchParams,
+}: {
+  searchParams: Promise<{ fecha?: string; prof?: string; paciente?: string }>
+}) {
+  const sesion = await exigirSesion()
+  if (!sesion.puedeCargarTurnos) redirect('/agenda')
 
-  useEffect(() => {
-    if (!sesion.puedeCargarTurnos) router.replace('/agenda')
-  }, [sesion.puedeCargarTurnos, router])
+  const sp = await searchParams
+  const fecha = esISO(sp.fecha) ? sp.fecha! : hoyISO()
+  const supabase = await clienteServidor()
 
-  const fecha = esISO(sp.get('fecha')) ? sp.get('fecha')! : hoyISO()
-
-  const [profesionalesTodos, setProfesionalesTodos] = useState<Perfil[]>([])
-  const [sedes, setSedes] = useState<Sede[]>([])
-  const [pacientes, setPacientes] = useState<Paciente[]>([])
-  const [disponibilidad, setDisponibilidad] = useState<{ libres: Franja[]; ocupados: Franja[]; atiende: boolean }>({
-    libres: [], ocupados: [], atiende: true,
-  })
-
-  useEffect(() => {
-    setProfesionalesTodos(almacen.listarProfesionales(sesion.centro.id))
-    setSedes(almacen.listarSedes(sesion.centro.id))
-    setPacientes(almacen.buscarPacientes(sesion.centro.id, ''))
-  }, [sesion.centro.id])
+  const [profesionalesTodos, sedes, pacientes, conHistorial] = await Promise.all([
+    listarProfesionales(supabase),
+    listarSedes(supabase),
+    buscarPacientes(supabase, ''),
+    pacientesConTurnoPrevio(supabase),
+  ])
 
   const profesionales = sesion.esAdmin
     ? profesionalesTodos
     : profesionalesTodos.filter((p) => p.id === sesion.perfil.id)
 
-  const pedido = sp.get('prof') && profesionales.some((p) => p.id === sp.get('prof')) ? sp.get('prof')! : undefined
+  if (profesionales.length === 0) redirect('/agenda')
+
+  const pedido = sp.prof && profesionales.some((p) => p.id === sp.prof) ? sp.prof : undefined
   const profesionalId =
     pedido ??
-    (profesionales.some((p) => p.id === sesion.perfil.id) ? sesion.perfil.id : (profesionales[0]?.id ?? sesion.perfil.id))
+    (profesionales.some((p) => p.id === sesion.perfil.id) ? sesion.perfil.id : profesionales[0]!.id)
 
   const duracion = sesion.centro.duracion_turno_min
+  const disponibilidad = await slotsDisponibles(supabase, profesionalId, fecha, duracion)
 
-  useEffect(() => {
-    if (!profesionalId) return
-    setDisponibilidad(almacen.slotsDisponibles(profesionalId, fecha, duracion))
-  }, [profesionalId, fecha, duracion])
-
-  if (!sesion.puedeCargarTurnos || profesionales.length === 0) return null
-
-  const pacienteParam = sp.get('paciente')
+  const pacienteParam = sp.paciente
+  const pacienteInicial =
+    pacienteParam && pacientes.some((p) => p.id === pacienteParam) ? pacienteParam : undefined
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -62,27 +57,20 @@ function Contenido({ sesion }: { sesion: Sesion }) {
       />
 
       <FormularioTurno
-        sesion={sesion}
+        centro={sesion.centro}
         fecha={fecha}
         profesionalId={profesionalId}
         profesionales={profesionales}
         sedes={sedes}
         pacientes={pacientes}
+        pacientesConTurnoPrevio={[...conHistorial]}
         libres={disponibilidad.libres}
         ocupados={disponibilidad.ocupados}
         atiende={disponibilidad.atiende}
         duracion={duracion}
         puedeElegirProfesional={sesion.esAdmin && profesionales.length > 1}
-        pacienteInicial={pacienteParam && pacientes.some((p) => p.id === pacienteParam) ? pacienteParam : undefined}
+        pacienteInicial={pacienteInicial}
       />
     </div>
-  )
-}
-
-export default function PaginaNuevoTurno() {
-  return (
-    <Suspense fallback={null}>
-      <Protegido>{(sesion) => <Contenido sesion={sesion} />}</Protegido>
-    </Suspense>
   )
 }

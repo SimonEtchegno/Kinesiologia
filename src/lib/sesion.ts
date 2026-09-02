@@ -28,7 +28,8 @@ export const obtenerSesion = cache(async (): Promise<Sesion | null> => {
     .from('perfiles')
     .select(
       'id, centro_id, nombre, email, rol, especialidad, telefono, activo, debe_cambiar_password, ' +
-        'centro:centros(id, nombre, kinesiologos_pueden_crear_turnos, duracion_turno_min)',
+        'centro:centros(id, nombre, kinesiologos_pueden_crear_turnos, duracion_turno_min, ' +
+        'reservas_publicas, whatsapp_ingreso_automatico, telefono)',
     )
     .eq('id', user.id)
     .maybeSingle()

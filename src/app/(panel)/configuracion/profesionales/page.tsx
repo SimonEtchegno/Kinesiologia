@@ -1,33 +1,17 @@
-'use client'
-
 import Link from 'next/link'
-import { useCallback, useEffect, useState } from 'react'
 import { IconoMas, IconoReloj } from '@/componentes/Iconos'
 import { Encabezado } from '@/componentes/ui'
-import { iniciales, type Perfil } from '@/lib/dominio'
-import * as almacen from '@/lib/local/almacen'
-import Protegido from '@/lib/local/Protegido'
-import type { Sesion } from '@/lib/local/sesion'
-import { cambiarActivoProfesional, cambiarRolProfesional } from '../acciones'
+import { iniciales } from '@/lib/dominio'
+import { listarProfesionales } from '@/lib/datos'
+import { exigirAdmin } from '@/lib/sesion'
+import { clienteServidor } from '@/lib/supabase/servidor'
+import { cambiarActivoProfesional } from '../acciones'
+import SelectorRol from './SelectorRol'
 
-function Contenido({ sesion }: { sesion: Sesion }) {
-  const [profesionales, setProfesionales] = useState<Perfil[]>([])
-
-  const recargar = useCallback(() => {
-    setProfesionales(almacen.listarProfesionales(sesion.centro.id, false))
-  }, [sesion.centro.id])
-
-  useEffect(recargar, [recargar])
-
-  function alCambiarActivo(fd: FormData) {
-    cambiarActivoProfesional(sesion, fd)
-    recargar()
-  }
-
-  function alCambiarRol(fd: FormData) {
-    cambiarRolProfesional(sesion, fd)
-    recargar()
-  }
+export default async function PaginaProfesionales() {
+  const sesion = await exigirAdmin()
+  const supabase = await clienteServidor()
+  const profesionales = await listarProfesionales(supabase, false)
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -86,22 +70,7 @@ function Contenido({ sesion }: { sesion: Sesion }) {
                 {p.rol === 'admin' ? 'Administrador' : 'Kinesiólogo/a'}
               </span>
             ) : (
-              <form action={alCambiarRol}>
-                <input type="hidden" name="id" value={p.id} />
-                <label className="sr-only" htmlFor={'rol-' + p.id}>
-                  Rol de {p.nombre}
-                </label>
-                <select
-                  id={'rol-' + p.id}
-                  name="rol"
-                  defaultValue={p.rol}
-                  onChange={(e) => e.currentTarget.form?.requestSubmit()}
-                  className="campo w-auto py-1.5 text-sm"
-                >
-                  <option value="kinesiologo">Kinesiólogo/a</option>
-                  <option value="admin">Administrador</option>
-                </select>
-              </form>
+              <SelectorRol perfilId={p.id} nombre={p.nombre} rolActual={p.rol} />
             )}
 
             <div className="ml-auto flex flex-wrap items-center gap-2 no-imprimir">
@@ -117,7 +86,7 @@ function Contenido({ sesion }: { sesion: Sesion }) {
               </Link>
 
               {p.id !== sesion.perfil.id && (
-                <form action={alCambiarActivo}>
+                <form action={cambiarActivoProfesional}>
                   <input type="hidden" name="id" value={p.id} />
                   <input type="hidden" name="activo" value={p.activo ? 'no' : 'si'} />
                   <button
@@ -138,13 +107,5 @@ function Contenido({ sesion }: { sesion: Sesion }) {
         el historial de cada paciente.
       </p>
     </div>
-  )
-}
-
-export default function PaginaProfesionales() {
-  return (
-    <Protegido soloAdmin>
-      {(sesion) => <Contenido sesion={sesion} />}
-    </Protegido>
   )
 }

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { IconoDescargar, IconoReportes } from '@/componentes/Iconos'
 import { Encabezado, Metrica, Vacio } from '@/componentes/ui'
-import { ESTADOS, nombreCompleto, type TurnoExpandido } from '@/lib/dominio'
+import { ESTADOS, nombreCompleto, tipoSesionDe, type TurnoExpandido } from '@/lib/dominio'
 import { aISO, esISO, formatearFechaCorta, hhmm, hoyISO } from '@/lib/fechas'
 import * as almacen from '@/lib/local/almacen'
 import Protegido from '@/lib/local/Protegido'
@@ -94,6 +94,14 @@ function Contenido({ sesion }: { sesion: Sesion }) {
   const profesionales = [...porProfesional.entries()].sort((a, b) => b[1].realizadas - a[1].realizadas)
   const pacientes = [...porPaciente.entries()].sort((a, b) => b[1].realizadas - a[1].realizadas).slice(0, 12)
 
+  const porTipo = new Map<string, number>()
+  for (const t of turnos) {
+    if (t.estado === 'cancelado') continue
+    porTipo.set(t.tipo_sesion, (porTipo.get(t.tipo_sesion) ?? 0) + 1)
+  }
+  const tipos = [...porTipo.entries()].sort((a, b) => b[1] - a[1])
+  const maxTipo = Math.max(1, ...tipos.map(([, n]) => n))
+
   const maxProf = Math.max(1, ...profesionales.map(([, v]) => v.realizadas))
   const maxPac = Math.max(1, ...pacientes.map(([, v]) => v.realizadas))
 
@@ -142,6 +150,36 @@ function Contenido({ sesion }: { sesion: Sesion }) {
             <Metrica etiqueta="Cancelados" valor={cancelados.length} detalle="dados de baja antes de la sesión" />
             <Metrica etiqueta="Pendientes" valor={pendientes.length} detalle="todavía sin cerrar" />
           </div>
+
+          <section className="tarjeta overflow-hidden">
+            <div className="border-b border-linea px-5 py-4">
+              <h2 className="font-semibold text-slate-900">Turnos por tipo de sesión</h2>
+              <p className="subtitulo">Con el mismo color que en la agenda. No cuenta los cancelados.</p>
+            </div>
+            <ul className="divide-y divide-linea">
+              {tipos.map(([valor, cantidad]) => {
+                const tipo = tipoSesionDe(valor)
+                const pct = Math.max((cantidad / maxTipo) * 100, 3)
+                return (
+                  <li key={valor} className="flex items-center gap-3 px-5 py-3">
+                    <span className={'size-2.5 shrink-0 rounded-full ' + tipo.punto} />
+                    <span className="w-52 shrink-0 truncate text-sm font-medium text-slate-800">
+                      {tipo.etiqueta}
+                    </span>
+                    <span className="h-2.5 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-100">
+                      <span
+                        className={'block h-full rounded-full ' + tipo.punto}
+                        style={{ width: pct + '%' }}
+                      />
+                    </span>
+                    <span className="w-8 shrink-0 text-right text-sm font-semibold tabular-nums text-slate-800">
+                      {cantidad}
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+          </section>
 
           <section className="tarjeta overflow-hidden">
             <div className="border-b border-linea px-5 py-4">

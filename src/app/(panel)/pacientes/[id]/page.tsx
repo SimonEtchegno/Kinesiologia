@@ -1,8 +1,5 @@
-'use client'
-
+import type { Metadata } from 'next'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
 import {
   IconoAgenda,
   IconoHistorial,
@@ -13,43 +10,57 @@ import {
   IconoPacientes,
   IconoTelefono,
 } from '@/componentes/Iconos'
+import EnviarWhatsApp from '@/componentes/EnviarWhatsApp'
 import { ChipEstado, Dato, Encabezado, Vacio } from '@/componentes/ui'
-import { COBERTURAS, iniciales, type Observacion, type Paciente, type Perfil, type TurnoExpandido } from '@/lib/dominio'
+import { COBERTURAS, iniciales, tipoSesionDe } from '@/lib/dominio'
+import { historialPaciente, listarProfesionales, pacientePorId } from '@/lib/datos'
 import { edad, formatearFechaCorta, formatearFechaLarga, hhmm } from '@/lib/fechas'
-import * as almacen from '@/lib/local/almacen'
-import Protegido from '@/lib/local/Protegido'
-import type { Sesion } from '@/lib/local/sesion'
+import { exigirSesion } from '@/lib/sesion'
+import { clienteServidor } from '@/lib/supabase/servidor'
+import { mensajeLibre } from '@/lib/whatsapp'
 import { cambiarActivoPaciente } from '../acciones'
 
-function Contenido({ sesion, pacienteId }: { sesion: Sesion; pacienteId: string }) {
-  const [paciente, setPaciente] = useState<Paciente | null | undefined>(undefined)
-  const [turnos, setTurnos] = useState<TurnoExpandido[]>([])
-  const [observacionPorTurno, setObservacionPorTurno] = useState<Map<string, Observacion>>(new Map())
-  const [profesionales, setProfesionales] = useState<Perfil[]>([])
-
-  const recargar = useCallback(() => {
-    const p = almacen.pacientePorId(pacienteId)
-    setPaciente(p)
-    if (p) {
-      const { turnos, observacionPorTurno } = almacen.historialPaciente(pacienteId)
-      setTurnos(turnos)
-      setObservacionPorTurno(observacionPorTurno)
-    }
-    setProfesionales(almacen.listarProfesionales(sesion.centro.id, false))
-  }, [pacienteId, sesion.centro.id])
-
-  useEffect(recargar, [recargar])
-
-  if (paciente === undefined) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <div className="size-8 animate-spin rounded-full border-2 border-marca-200 border-t-marca-600" />
-      </div>
-    )
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}): Promise<Metadata> {
+  const { id } = await params
+  const supabase = await clienteServidor()
+  const paciente = await pacientePorId(supabase, id)
+  if (!paciente) return { title: 'Paciente no encontrado' }
+  return {
+    title: `${paciente.apellido}, ${paciente.nombre}`,
   }
-  if (paciente === null) {
+}
+
+export default async function PaginaPaciente({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id: pacienteId } = await params
+  const sesion = await exigirSesion()
+  const supabase = await clienteServidor()
+
+  const [paciente, { turnos, observacionPorTurno }, profesionales] = await Promise.all([
+    pacientePorId(supabase, pacienteId),
+    historialPaciente(supabase, pacienteId),
+    listarProfesionales(supabase, false),
+  ])
+
+  if (!paciente) {
     return (
-      <Vacio Icono={IconoPacientes} titulo="No encontramos al paciente" texto="Puede que haya sido eliminado." />
+      <Vacio
+        Icono={IconoPacientes}
+        titulo="No encontramos al paciente"
+        texto="Puede que haya sido eliminado."
+        accion={
+          <Link href="/pacientes" className="boton-secundario boton-chico">
+            Volver a la lista
+          </Link>
+        }
+      />
     )
   }
 
@@ -60,11 +71,6 @@ function Contenido({ sesion, pacienteId }: { sesion: Sesion; pacienteId: string 
     .filter((t) => t.estado === 'confirmado' || t.estado === 'reprogramado')
     .sort((a, b) => (a.fecha + a.hora_inicio).localeCompare(b.fecha + b.hora_inicio))
   const anios = edad(paciente.fecha_nacimiento)
-
-  function alCambiarActivo(fd: FormData) {
-    cambiarActivoPaciente(fd)
-    recargar()
-  }
 
   return (
     <>
@@ -81,6 +87,12 @@ function Contenido({ sesion, pacienteId }: { sesion: Sesion; pacienteId: string 
         }
         acciones={
           <>
+            {paciente.activo && (
+              <EnviarWhatsApp
+                telefono={paciente.telefono}
+                mensaje={mensajeLibre(sesion.centro.nombre, paciente.nombre)}
+              />
+            )}
             {sesion.puedeCargarTurnos && paciente.activo && (
               <Link
                 href={'/turnos/nuevo?paciente=' + paciente.id}
@@ -206,7 +218,7 @@ function Contenido({ sesion, pacienteId }: { sesion: Sesion; pacienteId: string 
             </section>
           )}
 
-          <form action={alCambiarActivo} className="no-imprimir">
+          <form action={cambiarActivoPaciente} className="no-imprimir">
             <input type="hidden" name="id" value={paciente.id} />
             <input type="hidden" name="activo" value={paciente.activo ? 'no' : 'si'} />
             <button
@@ -260,9 +272,11 @@ function Contenido({ sesion, pacienteId }: { sesion: Sesion; pacienteId: string 
                         {hhmm(t.hora_inicio)}–{hhmm(t.hora_fin)}
                       </span>
                       <ChipEstado estado={t.estado} />
-                      <span className="ml-auto text-xs text-slate-400">
-                        {t.tipo_sesion}
-                        {t.profesional ? ' · ' + t.profesional.nombre : ''}
+                      <span className="ml-auto flex items-center gap-2 text-xs text-slate-400">
+                        <span className={'chip ' + tipoSesionDe(t.tipo_sesion).chip}>
+                          {tipoSesionDe(t.tipo_sesion).etiqueta}
+                        </span>
+                        {t.profesional?.nombre}
                       </span>
                     </div>
 
@@ -318,9 +332,4 @@ function Contenido({ sesion, pacienteId }: { sesion: Sesion; pacienteId: string 
       </div>
     </>
   )
-}
-
-export default function PaginaPaciente() {
-  const params = useParams<{ id: string }>()
-  return <Protegido>{(sesion) => <Contenido sesion={sesion} pacienteId={params.id} />}</Protegido>
 }

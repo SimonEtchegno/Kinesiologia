@@ -1,77 +1,101 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useActionState, useEffect, useRef } from 'react'
+import { useActionState } from 'react'
 import { IconoAlerta } from '@/componentes/Iconos'
-import { useSesion } from '@/lib/local/sesion'
-import { ingresar, type EstadoLogin } from './acciones'
+import BotonGoogle from '@/componentes/BotonGoogle'
+import { clienteNavegador } from '@/lib/supabase/navegador'
+import { mensajeDeError } from '@/lib/supabase/mensajes'
 
-export default function FormularioLogin({ volver }: { volver: string }) {
-  const { refrescar, sesion } = useSesion()
+interface EstadoLogin {
+  error?: string
+}
+
+export default function FormularioLogin({
+  volver,
+  errorInicial,
+}: {
+  volver: string
+  errorInicial?: string
+}) {
   const router = useRouter()
-  const yaRedirigido = useRef(false)
 
-  const [estado, accion, pendiente] = useActionState<EstadoLogin, FormData>((prev, fd) => {
-    const resultado = ingresar(prev, fd)
-    if (!resultado.error) refrescar()
-    return resultado
-  }, {})
+  const [estado, accion, pendiente] = useActionState<EstadoLogin, FormData>(async (_prev, fd) => {
+    const email = String(fd.get('email') ?? '').trim()
+    const password = String(fd.get('password') ?? '')
+    if (!email || !password) return { error: 'Ingresá tu email y tu contraseña.' }
 
-  useEffect(() => {
-    // Login exitoso: refrescar() ya leyó la nueva sesión de localStorage.
-    if (sesion && !yaRedirigido.current) {
-      yaRedirigido.current = true
-      router.replace(volver)
-    }
-  }, [sesion, volver, router])
+    const supabase = clienteNavegador()
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) return { error: mensajeDeError(error) }
+
+    router.replace(volver)
+    router.refresh()
+    return {}
+  }, errorInicial ? { error: errorInicial } : {})
 
   return (
-    <form action={accion} className="space-y-5" noValidate>
-      {estado.error && (
-        <div className="aviso-error" role="alert">
-          <IconoAlerta className="size-5 shrink-0" />
-          <span>{estado.error}</span>
+    <div className="space-y-5">
+      <form action={accion} className="space-y-5" noValidate>
+        {estado.error && (
+          <div className="aviso-error" role="alert">
+            <IconoAlerta className="size-5 shrink-0" />
+            <span>{estado.error}</span>
+          </div>
+        )}
+
+        <div>
+          <label htmlFor="email" className="etiqueta">
+            Email
+          </label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            required
+            autoFocus
+            placeholder="vos@centro.com.ar"
+            className="campo"
+          />
         </div>
-      )}
 
-      <div>
-        <label htmlFor="email" className="etiqueta">
-          Email
-        </label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          required
-          autoFocus
-          placeholder="vos@centro.com.ar"
-          className="campo"
-        />
+        <div>
+          <label htmlFor="password" className="etiqueta">
+            Contraseña
+          </label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            placeholder="••••••••"
+            className="campo"
+          />
+        </div>
+
+        <button type="submit" className="boton-primario w-full py-3" disabled={pendiente}>
+          {pendiente ? 'Entrando…' : 'Entrar'}
+        </button>
+      </form>
+
+      <div className="flex items-center gap-3 text-xs text-slate-400">
+        <span className="h-px flex-1 bg-linea" />
+        O
+        <span className="h-px flex-1 bg-linea" />
       </div>
 
-      <div>
-        <label htmlFor="password" className="etiqueta">
-          Contraseña
-        </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-          placeholder="••••••••"
-          className="campo"
-        />
-      </div>
+      <BotonGoogle volver={volver} />
 
-      <button type="submit" className="boton-primario w-full py-3" disabled={pendiente}>
-        {pendiente ? 'Entrando…' : 'Entrar'}
-      </button>
-
-      <p className="text-center text-xs text-slate-500">
-        ¿No tenés cuenta? Te la crea el administrador de tu centro.
+      <p className="text-center text-sm text-slate-500">
+        ¿No tenés cuenta?{' '}
+        <Link href="/registro" className="font-medium text-marca-700 hover:underline">
+          Creá una
+        </Link>{' '}
+        — quedás como administrador del centro.
       </p>
-    </form>
+    </div>
   )
 }

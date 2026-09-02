@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { IconoAgenda, IconoEscudo, IconoNota, IconoReportes } from '@/componentes/Iconos'
@@ -34,6 +35,7 @@ export default function PaginaLogin() {
 function Login() {
   const params = useSearchParams()
   const volver = params.get('volver') ?? '/agenda'
+  const errorInicial = params.get('error') ?? undefined
 
   return (
     <main className="min-h-dvh bg-gradient-to-br from-marca-50 via-lienzo to-acento-50/60">
@@ -85,26 +87,16 @@ function Login() {
             <h2 className="text-xl font-semibold tracking-tight text-slate-900">Iniciar sesión</h2>
             <p className="subtitulo mt-1 mb-6">Entrá con la cuenta de tu centro.</p>
 
-            <FormularioLogin volver={volver} />
+            <FormularioLogin volver={volver} errorInicial={errorInicial} />
           </div>
 
-          <div className="tarjeta mt-4 p-4 text-sm">
-            <p className="font-semibold text-slate-700">Modo local — cuentas de prueba</p>
-            <p className="mt-1 text-slate-500">
-              Los datos viven en este navegador, no en un servidor. Probá con:
-            </p>
-            <ul className="mt-2 space-y-1 text-slate-600">
-              <li>
-                <span className="font-medium">admin@centrokine.com.ar</span> (administrador)
-              </li>
-              <li>
-                <span className="font-medium">milagros@centrokine.com.ar</span> (kinesióloga)
-              </li>
-            </ul>
-            <p className="mt-2 text-slate-500">
-              Contraseña de las dos: <span className="font-mono font-medium">kinesio123</span>
-            </p>
-          </div>
+          <p className="mt-4 text-center text-sm text-slate-500">
+            ¿No tenés cuenta?{' '}
+            <Link href="/registro" className="font-medium text-marca-700 hover:underline">
+              Creá una
+            </Link>{' '}
+            — entrás como administrador, con acceso a todo.
+          </p>
         </section>
       </div>
     </main>

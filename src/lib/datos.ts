@@ -22,8 +22,8 @@ export type Cliente = Awaited<ReturnType<typeof clienteServidor>>
 
 const SELECT_TURNO =
   'id, centro_id, profesional_id, paciente_id, sede_id, fecha, hora_inicio, hora_fin, ' +
-  'tipo_sesion, estado, motivo, created_at, ' +
-  'paciente:pacientes(id, nombre, apellido, cobertura, obra_social), ' +
+  'tipo_sesion, estado, motivo, origen, created_at, ' +
+  'paciente:pacientes(id, nombre, apellido, cobertura, obra_social, telefono), ' +
   // turnos apunta a perfiles dos veces (profesional_id y created_by): hay que desambiguar.
   'profesional:perfiles!turnos_profesional_id_fkey(id, nombre, especialidad), ' +
   'sede:sedes(id, nombre), ' +
@@ -68,12 +68,10 @@ export async function listarProfesionales(supabase: Cliente, soloActivos = true)
   return (data ?? []) as unknown as Perfil[]
 }
 
-export async function listarSedes(supabase: Cliente) {
-  const { data, error } = await supabase
-    .from('sedes')
-    .select('id, nombre, direccion, activa')
-    .eq('activa', true)
-    .order('nombre')
+export async function listarSedes(supabase: Cliente, soloActivas = true) {
+  let q = supabase.from('sedes').select('id, nombre, direccion, activa').order('nombre')
+  if (soloActivas) q = q.eq('activa', true)
+  const { data, error } = await q
   if (error) throw new Error(error.message)
   return (data ?? []) as unknown as Sede[]
 }
@@ -176,6 +174,17 @@ export async function pacientePorId(supabase: Cliente, id: string): Promise<Paci
     .maybeSingle()
   if (error) throw new Error(error.message)
   return (data ?? null) as unknown as Paciente | null
+}
+
+/**
+ * Ids de pacientes que ya tienen al menos un turno cargado. Sirve para
+ * saber, al elegir un paciente en el formulario de turno nuevo, si es su
+ * primera sesión (así se ofrece el tipo "Ingreso" por defecto).
+ */
+export async function pacientesConTurnoPrevio(supabase: Cliente): Promise<Set<string>> {
+  const { data, error } = await supabase.from('turnos').select('paciente_id')
+  if (error) throw new Error(error.message)
+  return new Set((data ?? []).map((t) => t.paciente_id as string))
 }
 
 /** Turnos + observaciones de un paciente, para la línea de tiempo (UC-07). */

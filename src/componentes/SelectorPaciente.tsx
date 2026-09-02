@@ -12,10 +12,13 @@ export default function SelectorPaciente({
   pacientes,
   nombre = 'paciente_id',
   inicial,
+  onCambio,
 }: {
   pacientes: Paciente[]
   nombre?: string
   inicial?: string
+  /** Avisa qué paciente quedó elegido ('__nuevo' si se da de alta acá). */
+  onCambio?: (pacienteId: string) => void
 }) {
   const [elegido, setElegido] = useState<string>(inicial ?? '')
   const [texto, setTexto] = useState('')
@@ -23,6 +26,11 @@ export default function SelectorPaciente({
   const [cobertura, setCobertura] = useState<'particular' | 'obra_social'>('particular')
 
   const seleccionado = pacientes.find((p) => p.id === elegido)
+
+  function elegir(id: string) {
+    setElegido(id)
+    onCambio?.(id)
+  }
 
   const filtrados = useMemo(() => {
     const t = texto.trim().toLowerCase()
@@ -43,7 +51,10 @@ export default function SelectorPaciente({
           <p className="text-sm font-semibold text-slate-800">Paciente nuevo</p>
           <button
             type="button"
-            onClick={() => setNuevo(false)}
+            onClick={() => {
+              setNuevo(false)
+              onCambio?.(elegido)
+            }}
             className="boton-fantasma boton-chico"
           >
             <IconoX className="size-4" />
@@ -126,7 +137,7 @@ export default function SelectorPaciente({
           </div>
           <button
             type="button"
-            onClick={() => setElegido('')}
+            onClick={() => elegir('')}
             className="boton-fantasma boton-chico"
           >
             Cambiar
@@ -156,7 +167,7 @@ export default function SelectorPaciente({
               <li key={p.id}>
                 <button
                   type="button"
-                  onClick={() => setElegido(p.id)}
+                  onClick={() => elegir(p.id)}
                   className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left hover:bg-slate-50"
                 >
                   <span className="min-w-0">
@@ -177,7 +188,10 @@ export default function SelectorPaciente({
 
           <button
             type="button"
-            onClick={() => setNuevo(true)}
+            onClick={() => {
+              setNuevo(true)
+              onCambio?.('__nuevo')
+            }}
             className="boton-secundario boton-chico mt-2"
           >
             <IconoMas className="size-4" />

@@ -3,8 +3,7 @@
 import { useActionState, useState } from 'react'
 import { IconoAlerta, IconoCheck, IconoNota } from '@/componentes/Iconos'
 import type { Observacion } from '@/lib/dominio'
-import type { Sesion } from '@/lib/local/sesion'
-import { guardarObservacion, type Resultado } from '../acciones'
+import { guardarObservacion } from '../acciones'
 
 /**
  * UC-06 — Observación clínica.
@@ -20,21 +19,13 @@ const SUGERENCIAS_PROXIMA = [
 ]
 
 export default function FormObservacion({
-  sesion,
   turnoId,
   observacion,
-  onGuardado,
 }: {
-  sesion: Sesion
   turnoId: string
   observacion: Observacion | null
-  onGuardado: () => void
 }) {
-  const [estado, accion, pendiente] = useActionState<Resultado, FormData>((prev, fd) => {
-    const r = guardarObservacion(sesion, prev, fd)
-    if (r.ok) onGuardado()
-    return r
-  }, {})
+  const [estado, accion, pendiente] = useActionState(guardarObservacion, {})
   const [dolor, setDolor] = useState<string>(
     observacion?.dolor_referido != null ? String(observacion.dolor_referido) : '',
   )

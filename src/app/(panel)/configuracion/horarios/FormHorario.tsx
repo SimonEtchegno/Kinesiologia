@@ -5,26 +5,17 @@ import AvisoAccion from '@/componentes/AvisoAccion'
 import { IconoMas } from '@/componentes/Iconos'
 import type { Sede } from '@/lib/dominio'
 import { DIAS_CORTOS } from '@/lib/fechas'
-import type { Sesion } from '@/lib/local/sesion'
-import { agregarHorario, type Resultado } from '../acciones'
+import { agregarHorario } from '../acciones'
 
 /** UC-09 — Alta de una franja de atención, para uno o varios días. */
 export default function FormHorario({
-  sesion,
   profesionalId,
   sedes,
-  onGuardado,
 }: {
-  sesion: Sesion
   profesionalId: string
   sedes: Sede[]
-  onGuardado: () => void
 }) {
-  const [estado, accion, pendiente] = useActionState<Resultado, FormData>((prev, fd) => {
-    const r = agregarHorario(sesion, prev, fd)
-    if (r.ok) onGuardado()
-    return r
-  }, {})
+  const [estado, accion, pendiente] = useActionState(agregarHorario, {})
 
   // Lunes a sábado primero; el domingo al final, como se lee una agenda.
   const orden = [1, 2, 3, 4, 5, 6, 0]

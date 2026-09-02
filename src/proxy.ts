@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from './lib/supabase/env'
 
-const PUBLICAS = ['/login', '/auth']
+const PUBLICAS = ['/login', '/registro', '/reservar', '/auth']
 
 /**
  * Corre antes de cada request: refresca el token de Supabase y bloquea el panel
