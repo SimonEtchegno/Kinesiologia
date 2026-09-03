@@ -1,4 +1,5 @@
 import { cache } from 'react'
+import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import type { Centro, Perfil } from './dominio'
 import { clienteServidor } from './supabase/servidor'
@@ -19,10 +20,20 @@ export interface Sesion {
 export const obtenerSesion = cache(async (): Promise<Sesion | null> => {
   const supabase = await clienteServidor()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return null
+  // El middleware ya validó el JWT con auth.getUser() y nos pasa el id por
+  // header: nos ahorramos repetir ese mismo viaje de red acá. Si por algún
+  // motivo la request no pasó por el middleware, volvemos al getUser()
+  // normal. De cualquier forma esto es solo para construir el filtro: lo
+  // que de verdad decide qué filas vuelven es RLS, con el JWT real de la
+  // cookie — un id equivocado acá simplemente no encuentra nada.
+  let userId = (await headers()).get('x-user-id')
+  if (!userId) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    userId = user?.id ?? null
+  }
+  if (!userId) return null
 
   const respuesta = await supabase
     .from('perfiles')
@@ -31,7 +42,7 @@ export const obtenerSesion = cache(async (): Promise<Sesion | null> => {
         'centro:centros(id, nombre, kinesiologos_pueden_crear_turnos, duracion_turno_min, ' +
         'reservas_publicas, whatsapp_ingreso_automatico, telefono)',
     )
-    .eq('id', user.id)
+    .eq('id', userId)
     .maybeSingle()
 
   // Sin tipos generados de la base, Supabase no puede inferir la forma de la fila.
