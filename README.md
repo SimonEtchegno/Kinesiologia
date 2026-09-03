@@ -86,9 +86,12 @@ src/app/
 
 ## Cuentas y permisos
 
-Desde `/login` se puede **crear una cuenta** (`/registro`): nombre, email y
-contraseña. Toda cuenta creada así entra como **administrador** del centro,
-o sea que puede:
+Desde `/login`, **"Continuar con Google" crea una cuenta la primera vez**
+que alguien entra con una cuenta de Google que todavía no tiene perfil. No
+hay alta por email/contraseña: se sacó porque dependía del mail de
+confirmación, poco confiable en un proyecto de Supabase sin SMTP propio
+configurado (ver "Decisiones de diseño"). Toda cuenta creada así entra
+como **administrador** del centro, o sea que puede:
 
 - ver y cargar turnos en la agenda de cualquier profesional,
 - marcar realizado/ausente y cargar la observación clínica de cualquier turno,
@@ -187,6 +190,14 @@ siguen mostrándose, en gris).
   false`), nunca se borran. El historial clínico se conserva siempre.
 - **Bitácora del turno**: cada cambio de estado queda en `turno_eventos`,
   visible en el detalle del turno (quién, cuándo, qué cambió).
+- **Alta de cuenta solo con Google**: no hay registro por email/contraseña.
+  Supabase exige confirmar el email antes de dejar entrar a una cuenta
+  nueva, y el mailer compartido que trae por defecto (sin SMTP propio
+  configurado) tiene un límite muy bajo de envíos — el registro por email
+  quedaba roto la mayor parte del tiempo. El login por email/contraseña
+  sigue existiendo para las cuentas que invita el administrador desde
+  Configuración → Profesionales (`auth.admin.createUser` con
+  `email_confirm: true`, sin depender de ningún mail).
 
 ## Fuera de alcance (a propósito)
 

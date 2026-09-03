@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useActionState } from 'react'
 import { IconoAlerta } from '@/componentes/Iconos'
@@ -88,14 +87,6 @@ export default function FormularioLogin({
       </div>
 
       <BotonGoogle volver={volver} />
-
-      <p className="text-center text-sm text-slate-500">
-        ¿No tenés cuenta?{' '}
-        <Link href="/registro" className="font-medium text-marca-700 hover:underline">
-          Creá una
-        </Link>{' '}
-        — quedás como administrador del centro.
-      </p>
     </div>
   )
 }

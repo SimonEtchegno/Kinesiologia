@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { IconoAgenda, IconoEscudo, IconoNota, IconoReportes } from '@/componentes/Iconos'
@@ -91,11 +90,8 @@ function Login() {
           </div>
 
           <p className="mt-4 text-center text-sm text-slate-500">
-            ¿No tenés cuenta?{' '}
-            <Link href="/registro" className="font-medium text-marca-700 hover:underline">
-              Creá una
-            </Link>{' '}
-            — entrás como administrador, con acceso a todo.
+            ¿No tenés cuenta? Entrá con Google — la primera vez te la crea sola, como
+            administrador de tu centro.
           </p>
         </section>
       </div>

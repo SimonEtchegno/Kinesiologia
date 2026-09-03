@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from './lib/supabase/env'
 
-const PUBLICAS = ['/login', '/registro', '/reservar', '/auth']
+const PUBLICAS = ['/login', '/reservar', '/auth']
 
 /**
  * Corre antes de cada request: refresca el token de Supabase y bloquea el panel
@@ -19,9 +19,9 @@ export async function proxy(request: NextRequest) {
 
   // getUser() es una llamada de red a Supabase: solo vale la pena pagarla
   // cuando la respuesta puede cambiar (rutas protegidas, y /login para
-  // sacar de ahí a quien ya tiene sesión). /reservar, /registro y
-  // /auth/callback no la necesitan — este último refresca su propia
-  // sesión al cambiar el code por cookies.
+  // sacar de ahí a quien ya tiene sesión). /reservar y /auth/callback no
+  // la necesitan — este último refresca su propia sesión al cambiar el
+  // code por cookies.
   if (esPublica && ruta !== '/login') return respuesta
 
   const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
