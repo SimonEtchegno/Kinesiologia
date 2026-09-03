@@ -1,22 +1,19 @@
 import { esHora, esISO } from '@/lib/fechas'
-import * as almacen from '@/lib/local/almacen'
+import { reservarTurnoPublico, type ResultadoReserva } from '@/lib/reservas'
 import type { Cobertura } from '@/lib/dominio'
 
-export interface ResultadoReserva {
-  error?: string
-  ok?: string
-  id?: string
-}
+export type { ResultadoReserva }
 
 /**
- * Reserva desde la página pública (sin sesión). Toda la validación fuerte
- * vive en el almacén: acá solo se leen y limpian los campos del formulario.
+ * Reserva desde la página pública (sin sesión). La validación fuerte vive
+ * en la función SQL `reservar_turno_publico` (rol anon): acá solo se leen
+ * y limpian los campos del formulario antes de llamarla.
  */
-export function reservarTurno(
+export async function reservarTurno(
   centroId: string,
   _previo: ResultadoReserva,
   datos: FormData,
-): ResultadoReserva {
+): Promise<ResultadoReserva> {
   const profesionalId = String(datos.get('profesional_id') ?? '')
   const fecha = String(datos.get('fecha') ?? '')
   const horaInicio = String(datos.get('hora_inicio') ?? '')
@@ -28,7 +25,7 @@ export function reservarTurno(
 
   const cobertura = String(datos.get('cobertura') ?? 'particular') as Cobertura
 
-  return almacen.reservarTurnoPublico({
+  return reservarTurnoPublico({
     centroId,
     profesionalId,
     fecha,

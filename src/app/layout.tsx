@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
-import { SesionProvider } from '@/lib/local/sesion'
 import './globals.css'
 
 const inter = Inter({
@@ -35,7 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
-        <SesionProvider>{children}</SesionProvider>
+        {children}
       </body>
     </html>
   )

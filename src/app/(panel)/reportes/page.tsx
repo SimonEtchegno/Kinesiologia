@@ -1,14 +1,16 @@
-'use client'
-
+import type { Metadata } from 'next'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
 import { IconoDescargar, IconoReportes } from '@/componentes/Iconos'
 import { Encabezado, Metrica, Vacio } from '@/componentes/ui'
-import { ESTADOS, nombreCompleto, tipoSesionDe, type TurnoExpandido } from '@/lib/dominio'
-import { aISO, esISO, formatearFechaCorta, hhmm, hoyISO } from '@/lib/fechas'
-import * as almacen from '@/lib/local/almacen'
-import Protegido from '@/lib/local/Protegido'
-import type { Sesion } from '@/lib/local/sesion'
+import { nombreCompleto, tipoSesionDe, type TurnoExpandido } from '@/lib/dominio'
+import { turnosEnRango } from '@/lib/datos'
+import { aISO, esISO, formatearFechaCorta, hoyISO } from '@/lib/fechas'
+import { exigirAdmin } from '@/lib/sesion'
+import { clienteServidor } from '@/lib/supabase/servidor'
+
+export const metadata: Metadata = {
+  title: 'Reportes',
+}
 
 /** Barra horizontal de una sola serie: un solo tono, valor siempre visible. */
 function Barra({ valor, maximo, titulo }: { valor: number; maximo: number; titulo: string }) {
@@ -25,48 +27,28 @@ function Barra({ valor, maximo, titulo }: { valor: number; maximo: number; titul
   )
 }
 
-function celda(valor: string | number | null): string {
-  const s = String(valor ?? '')
-  return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
+interface Parametros {
+  desde?: string
+  hasta?: string
 }
 
-function descargarCsv(turnos: TurnoExpandido[], desde: string, hasta: string) {
-  const encabezado = [
-    'Fecha', 'Inicio', 'Fin', 'Profesional', 'Paciente', 'Tipo de sesion',
-    'Estado', 'Cobertura', 'Sede', 'Motivo', 'Observacion cargada',
-  ]
-  const filas = turnos.map((t) =>
-    [
-      t.fecha, hhmm(t.hora_inicio), hhmm(t.hora_fin), t.profesional?.nombre ?? '',
-      nombreCompleto(t.paciente), t.tipo_sesion, ESTADOS[t.estado].etiqueta,
-      t.paciente?.cobertura === 'obra_social' ? (t.paciente.obra_social ?? 'Obra social') : 'Particular',
-      t.sede?.nombre ?? '', t.motivo ?? '', t.tiene_observacion ? 'si' : 'no',
-    ].map(celda).join(';'),
-  )
-  const cuerpo = '﻿' + [encabezado.join(';'), ...filas].join('\r\n') + '\r\n'
-  const blob = new Blob([cuerpo], { type: 'text/csv;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = 'kinesio-turnos-' + desde + '-a-' + hasta + '.csv'
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  URL.revokeObjectURL(url)
-}
+export default async function PaginaReportes({
+  searchParams,
+}: {
+  searchParams: Promise<Parametros>
+}) {
+  await exigirAdmin()
+  const sp = await searchParams
 
-function Contenido({ sesion }: { sesion: Sesion }) {
   const hoy = hoyISO()
   const primeroDelMes = aISO(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
-  const [desde, setDesde] = useState(primeroDelMes)
-  const [hasta, setHasta] = useState(hoy)
-  const [turnos, setTurnos] = useState<TurnoExpandido[]>([])
+  const desde = esISO(sp.desde) ? sp.desde : primeroDelMes
+  const hasta = esISO(sp.hasta) ? sp.hasta : hoy
 
-  useEffect(() => {
-    const d = esISO(desde) ? desde : primeroDelMes
-    const h = esISO(hasta) ? hasta : hoy
-    setTurnos(almacen.turnosEnRango(sesion.centro.id, d, h, { incluirCancelados: true }))
-  }, [sesion.centro.id, desde, hasta, primeroDelMes, hoy])
+  const supabase = await clienteServidor()
+  const turnos: TurnoExpandido[] = await turnosEnRango(supabase, desde, hasta, {
+    incluirCancelados: true,
+  })
 
   const realizados = turnos.filter((t) => t.estado === 'realizado')
   const ausentes = turnos.filter((t) => t.estado === 'ausente')
@@ -82,10 +64,24 @@ function Contenido({ sesion }: { sesion: Sesion }) {
   for (const t of turnos) {
     if (t.estado !== 'realizado' && t.estado !== 'ausente') continue
 
-    const pro = porProfesional.get(t.profesional_id) ?? { nombre: t.profesional?.nombre ?? 'Sin asignar', realizadas: 0, ausencias: 0 }
-    const pac = porPaciente.get(t.paciente_id) ?? { nombre: nombreCompleto(t.paciente), realizadas: 0, ausencias: 0 }
+    const pro = porProfesional.get(t.profesional_id) ?? {
+      nombre: t.profesional?.nombre ?? 'Sin asignar',
+      realizadas: 0,
+      ausencias: 0,
+    }
+    const pac = porPaciente.get(t.paciente_id) ?? {
+      nombre: nombreCompleto(t.paciente),
+      realizadas: 0,
+      ausencias: 0,
+    }
 
-    if (t.estado === 'realizado') { pro.realizadas++; pac.realizadas++ } else { pro.ausencias++; pac.ausencias++ }
+    if (t.estado === 'realizado') {
+      pro.realizadas++
+      pac.realizadas++
+    } else {
+      pro.ausencias++
+      pac.ausencias++
+    }
 
     porProfesional.set(t.profesional_id, pro)
     porPaciente.set(t.paciente_id, pac)
@@ -111,27 +107,27 @@ function Contenido({ sesion }: { sesion: Sesion }) {
         titulo="Reportes"
         descripcion={'Del ' + formatearFechaCorta(desde) + ' al ' + formatearFechaCorta(hasta)}
         acciones={
-          <button
-            type="button"
-            onClick={() => descargarCsv(turnos, desde, hasta)}
+          <a
+            href={'/reportes/csv?desde=' + desde + '&hasta=' + hasta}
             className="boton-secundario boton-chico"
           >
             <IconoDescargar className="size-4" />
             Exportar CSV
-          </button>
+          </a>
         }
       />
 
-      <div className="mb-6 flex flex-wrap items-end gap-3 no-imprimir">
+      <form method="GET" action="/reportes" className="mb-6 flex flex-wrap items-end gap-3 no-imprimir">
         <div>
           <label htmlFor="desde" className="etiqueta">Desde</label>
-          <input id="desde" type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="campo w-auto" />
+          <input id="desde" name="desde" type="date" defaultValue={desde} className="campo w-auto" />
         </div>
         <div>
           <label htmlFor="hasta" className="etiqueta">Hasta</label>
-          <input id="hasta" type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="campo w-auto" />
+          <input id="hasta" name="hasta" type="date" defaultValue={hasta} className="campo w-auto" />
         </div>
-      </div>
+        <button type="submit" className="boton-secundario boton-chico">Filtrar</button>
+      </form>
 
       {turnos.length === 0 ? (
         <div className="tarjeta">
@@ -249,8 +245,4 @@ function Contenido({ sesion }: { sesion: Sesion }) {
       )}
     </>
   )
-}
-
-export default function PaginaReportes() {
-  return <Protegido soloAdmin>{(sesion) => <Contenido sesion={sesion} />}</Protegido>
 }

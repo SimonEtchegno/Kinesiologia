@@ -17,7 +17,7 @@ import {
   type TurnoExpandido,
 } from '@/lib/dominio'
 import { hhmm, yaPaso } from '@/lib/fechas'
-import type { Sesion } from '@/lib/local/sesion'
+import type { Sesion } from '@/lib/sesion'
 import { marcarTurno } from '../turnos/acciones'
 
 interface Props {
@@ -25,7 +25,6 @@ interface Props {
   mostrarProfesional: boolean
   sesion: Sesion
   fecha: string
-  onCambio: () => void
 }
 
 function capitalizar(texto?: string | null) {
@@ -42,16 +41,10 @@ export default function VistaDia({
   mostrarProfesional,
   sesion,
   fecha,
-  onCambio,
 }: Props) {
   const usuarioId = sesion.perfil.id
   const esAdmin = sesion.esAdmin
   const puedeCargarTurnos = sesion.puedeCargarTurnos
-
-  async function marcar(fd: FormData) {
-    await marcarTurno(fd)
-    onCambio()
-  }
 
   if (turnos.length === 0) {
     return (
@@ -184,7 +177,7 @@ export default function VistaDia({
             {/* Botones de acción rápida */}
             <div className="flex flex-wrap items-center gap-2 pl-1.5 sm:pl-0 no-imprimir sm:ml-auto">
               {puedeMarcar && t.estado !== 'realizado' && (
-                <form action={marcar}>
+                <form action={marcarTurno}>
                   <input type="hidden" name="turno_id" value={t.id} />
                   <input type="hidden" name="estado" value="realizado" />
                   <button
@@ -198,7 +191,7 @@ export default function VistaDia({
               )}
 
               {puedeMarcar && t.estado !== 'ausente' && (
-                <form action={marcar}>
+                <form action={marcarTurno}>
                   <input type="hidden" name="turno_id" value={t.id} />
                   <input type="hidden" name="estado" value="ausente" />
                   <button

@@ -14,6 +14,16 @@ export async function proxy(request: NextRequest) {
   // Sin configurar, dejamos pasar: la propia página muestra el error de setup.
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return respuesta
 
+  const ruta = request.nextUrl.pathname
+  const esPublica = PUBLICAS.some((p) => ruta === p || ruta.startsWith(p + '/'))
+
+  // getUser() es una llamada de red a Supabase: solo vale la pena pagarla
+  // cuando la respuesta puede cambiar (rutas protegidas, y /login para
+  // sacar de ahí a quien ya tiene sesión). /reservar, /registro y
+  // /auth/callback no la necesitan — este último refresca su propia
+  // sesión al cambiar el code por cookies.
+  if (esPublica && ruta !== '/login') return respuesta
+
   const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     cookies: {
       getAll() {
@@ -34,9 +44,6 @@ export async function proxy(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-
-  const ruta = request.nextUrl.pathname
-  const esPublica = PUBLICAS.some((p) => ruta === p || ruta.startsWith(p + '/'))
 
   if (!user && !esPublica) {
     const url = request.nextUrl.clone()

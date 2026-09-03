@@ -71,6 +71,7 @@ src/lib/
   datos.ts                 Todas las consultas a Supabase
   agenda.ts                 Layout de la grilla semanal
   sesion.ts                 Sesión del usuario + su centro
+  reservas.ts                Envoltorio de las RPC públicas de /reservar
   supabase/                 Clientes de Supabase (navegador, servidor, admin)
 src/app/
   login/                     UC-01
@@ -101,11 +102,10 @@ un administrador desde Configuración → Profesionales siguen eligiendo rol
 
 **Cada cuenta que se registra arranca su propio centro**, aislado de los
 demás: no comparte pacientes, turnos, horarios ni configuración con otras
-cuentas del mismo navegador. Todo lo que se lee o se cambia en el almacén
-pasa por un filtro de `centro_id` (ver "Aislamiento por centro" en
-`src/lib/local/almacen.ts`) — el equivalente local a las políticas RLS de
-Postgres. Para sumar gente al mismo centro, el administrador las da de alta
-desde Configuración → Profesionales; eso sí las deja compartiendo la agenda.
+cuentas. El aislamiento por `centro_id` lo hace Postgres vía RLS (ver
+"Aislamiento por centro" más abajo), no el código de la app. Para sumar
+gente al mismo centro, el administrador las da de alta desde Configuración
+→ Profesionales; eso sí las deja compartiendo la agenda.
 
 ## Turnos online (reservas sin login)
 
@@ -125,9 +125,12 @@ En Configuración → Turnos online, el administrador elige entre:
   cargar un turno desde el panel — un paciente no puede reservar un horario
   ocupado ni fuera de la franja de atención.
 
-Toda la lógica de la página pública vive en `datosParaReservar`,
-`slotsPublicos` y `reservarTurnoPublico` (`src/lib/local/almacen.ts`), y
-respeta el mismo aislamiento por centro que el resto de la app.
+La página pública corre sin sesión, así que no puede pasar por RLS: llama
+tres funciones SQL `security definer` (`reserva_datos_centro`,
+`reserva_slots`, `reservar_turno_publico`, en
+`supabase/migrations/0004_signup_y_reservas_publicas.sql`) que exponen lo
+mínimo al rol `anon` y validan todo del lado del servidor. `src/lib/reservas.ts`
+es el envoltorio en TypeScript que las llama.
 
 ## WhatsApp
 

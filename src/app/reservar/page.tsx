@@ -4,8 +4,7 @@ import { useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
 import { IconoEscudo, IconoReloj } from '@/componentes/Iconos'
 import { Vacio } from '@/componentes/ui'
-import * as almacen from '@/lib/local/almacen'
-import type { DatosReserva } from '@/lib/local/almacen'
+import { datosParaReservar, type DatosReserva } from '@/lib/reservas'
 import FormularioReserva from './FormularioReserva'
 
 /**
@@ -19,7 +18,13 @@ function Contenido() {
   const [datos, setDatos] = useState<DatosReserva | undefined>(undefined)
 
   useEffect(() => {
-    setDatos(almacen.datosParaReservar(centroId))
+    let vigente = true
+    datosParaReservar(centroId).then((d) => {
+      if (vigente) setDatos(d)
+    })
+    return () => {
+      vigente = false
+    }
   }, [centroId])
 
   return (

@@ -5,8 +5,7 @@ import { IconoAlerta, IconoCheck, IconoReloj, IconoSede } from '@/componentes/Ic
 import EnviarWhatsApp from '@/componentes/EnviarWhatsApp'
 import { COBERTURAS } from '@/lib/dominio'
 import { formatearFechaLarga, hhmm, hoyISO, sumarDias } from '@/lib/fechas'
-import * as almacen from '@/lib/local/almacen'
-import type { DatosReserva, Franja } from '@/lib/local/almacen'
+import { DIAS_RESERVA_ONLINE, slotsPublicos, type DatosReserva, type Franja } from '@/lib/reservas'
 import { reservarTurno, type ResultadoReserva } from './acciones'
 
 interface Confirmado {
@@ -35,8 +34,8 @@ export default function FormularioReserva({
   const [libres, setLibres] = useState<Franja[]>([])
   const [confirmado, setConfirmado] = useState<Confirmado | null>(null)
 
-  const [estado, accion, pendiente] = useActionState<ResultadoReserva, FormData>((prev, fd) => {
-    const r = reservarTurno(centro.id, prev, fd)
+  const [estado, accion, pendiente] = useActionState<ResultadoReserva, FormData>(async (prev, fd) => {
+    const r = await reservarTurno(centro.id, prev, fd)
     if (r.ok) {
       setConfirmado({
         fecha: String(fd.get('fecha')),
@@ -52,8 +51,14 @@ export default function FormularioReserva({
   useEffect(() => {
     if (!profesionalId) return
     setHora('')
-    setLibres(almacen.slotsPublicos(centro.id, profesionalId, fecha, centro.duracion_turno_min))
-  }, [centro.id, centro.duracion_turno_min, profesionalId, fecha])
+    let vigente = true
+    slotsPublicos(centro.id, profesionalId, fecha).then((f) => {
+      if (vigente) setLibres(f)
+    })
+    return () => {
+      vigente = false
+    }
+  }, [centro.id, profesionalId, fecha])
 
   if (confirmado) {
     const cuando =
@@ -165,7 +170,7 @@ export default function FormularioReserva({
               type="date"
               value={fecha}
               min={hoy}
-              max={sumarDias(hoy, almacen.DIAS_RESERVA_ONLINE)}
+              max={sumarDias(hoy, DIAS_RESERVA_ONLINE)}
               onChange={(e) => e.target.value && setFecha(e.target.value)}
               required
               className="campo"

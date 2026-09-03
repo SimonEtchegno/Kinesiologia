@@ -1,56 +1,65 @@
-'use client'
-
-import { Suspense, useEffect, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import type { Metadata } from 'next'
 import { Encabezado } from '@/componentes/ui'
 import { ventanaHoraria } from '@/lib/agenda'
-import type { HorarioAtencion, Perfil, Sede, TurnoExpandido } from '@/lib/dominio'
+import { horariosDelCentro, listarProfesionales, listarSedes, turnosEnRango } from '@/lib/datos'
 import { esISO, hoyISO, semanaDe } from '@/lib/fechas'
-import * as almacen from '@/lib/local/almacen'
-import Protegido from '@/lib/local/Protegido'
-import type { Sesion } from '@/lib/local/sesion'
+import { exigirSesion } from '@/lib/sesion'
+import { clienteServidor } from '@/lib/supabase/servidor'
 import BarraAgenda, { type Vista } from './BarraAgenda'
 import GrillaSemana from './GrillaSemana'
 import LeyendaTipos from './LeyendaTipos'
 import VistaDia from './VistaDia'
 
-function Contenido({ sesion }: { sesion: Sesion }) {
-  const sp = useSearchParams()
-  const hoy = hoyISO()
-  const fecha = esISO(sp.get('fecha')) ? sp.get('fecha')! : hoy
-  const vista: Vista = sp.get('vista') === 'semana' ? 'semana' : 'dia'
-  const prof = sesion.esAdmin ? (sp.get('prof') ?? 'todos') : sesion.perfil.id
-  const sede = sp.get('sede') ?? ''
-  const profesionalId = prof === 'todos' ? undefined : prof
+export const metadata: Metadata = {
+  title: 'Agenda',
+}
 
-  const [profesionales, setProfesionales] = useState<Perfil[]>([])
-  const [sedes, setSedes] = useState<Sede[]>([])
-  const [turnos, setTurnos] = useState<TurnoExpandido[]>([])
-  const [horarios, setHorarios] = useState<HorarioAtencion[]>([])
+interface Parametros {
+  fecha?: string
+  vista?: string
+  prof?: string
+  sede?: string
+}
+
+export default async function PaginaAgenda({
+  searchParams,
+}: {
+  searchParams: Promise<Parametros>
+}) {
+  const sesion = await exigirSesion()
+  const sp = await searchParams
+
+  const hoy = hoyISO()
+  const fecha = esISO(sp.fecha) ? sp.fecha : hoy
+  const vista: Vista = sp.vista === 'semana' ? 'semana' : 'dia'
+  // Un kinesiólogo ve solo su propia agenda: el filtro por profesional es
+  // del administrador (UC-11).
+  const prof = sesion.esAdmin ? (sp.prof ?? 'todos') : sesion.perfil.id
+  const sede = sp.sede ?? ''
+  const profesionalId = prof === 'todos' ? undefined : prof
 
   const dias = vista === 'semana' ? semanaDe(fecha) : [fecha]
   const primerDia = dias[0]!
   const ultimoDia = dias[dias.length - 1]!
 
-  function cargar() {
-    setProfesionales(almacen.listarProfesionales(sesion.centro.id))
-    setSedes(almacen.listarSedes(sesion.centro.id))
-    setTurnos(
-      almacen.turnosEnRango(sesion.centro.id, primerDia, ultimoDia, {
-        profesionalId,
-        sedeId: sede || undefined,
-      }),
-    )
-    setHorarios(almacen.horariosDelCentro(sesion.centro.id))
-  }
+  const supabase = await clienteServidor()
+  const [profesionales, sedes, turnos, horarios] = await Promise.all([
+    listarProfesionales(supabase),
+    listarSedes(supabase),
+    turnosEnRango(supabase, primerDia, ultimoDia, {
+      profesionalId,
+      sedeId: sede || undefined,
+    }),
+    horariosDelCentro(supabase),
+  ])
 
-  useEffect(cargar, [sesion.centro.id, primerDia, ultimoDia, profesionalId, sede])
-
-  const turnosPorDia = new Map<string, TurnoExpandido[]>()
+  const turnosPorDia = new Map<string, typeof turnos>()
   for (const d of dias) turnosPorDia.set(d, [])
   for (const t of turnos) turnosPorDia.get(t.fecha)?.push(t)
 
-  const horariosVisibles = profesionalId ? horarios.filter((h) => h.profesional_id === profesionalId) : horarios
+  const horariosVisibles = profesionalId
+    ? horarios.filter((h) => h.profesional_id === profesionalId)
+    : horarios
   const ventana = ventanaHoraria(horariosVisibles, turnos)
 
   const mostrarProfesional = !profesionalId && profesionales.length > 1
@@ -127,19 +136,10 @@ function Contenido({ sesion }: { sesion: Sesion }) {
           mostrarProfesional={mostrarProfesional}
           sesion={sesion}
           fecha={fecha}
-          onCambio={cargar}
         />
       )}
 
       <LeyendaTipos turnos={turnos} />
     </>
-  )
-}
-
-export default function PaginaAgenda() {
-  return (
-    <Suspense fallback={null}>
-      <Protegido>{(sesion) => <Contenido sesion={sesion} />}</Protegido>
-    </Suspense>
   )
 }
