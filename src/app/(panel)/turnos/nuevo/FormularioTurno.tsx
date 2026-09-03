@@ -194,7 +194,7 @@ export default function FormularioTurno({
             </label>
             <select
               id="profesional_id"
-              name="profesional_id"
+              name={puedeElegirProfesional ? 'profesional_id' : undefined}
               value={profesionalId}
               disabled={!puedeElegirProfesional}
               onChange={(e) => recargar({ prof: e.target.value })}
@@ -207,6 +207,10 @@ export default function FormularioTurno({
                 </option>
               ))}
             </select>
+            {/* Un <select disabled> no manda su valor al enviar el formulario. */}
+            {!puedeElegirProfesional && (
+              <input type="hidden" name="profesional_id" value={profesionalId} />
+            )}
           </div>
 
           <div>
