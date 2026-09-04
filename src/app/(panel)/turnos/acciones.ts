@@ -4,8 +4,8 @@ import { revalidatePath } from 'next/cache'
 import type { EstadoTurno } from '@/lib/dominio'
 import { desdeMinutos, esHora, esISO, hhmm, minutos, yaPaso } from '@/lib/fechas'
 import {
+  capacidadDisponible,
   estaEnHorarioDeAtencion,
-  hayChoque,
   observacionDeTurno,
   turnoPorId,
   type Cliente,
@@ -111,16 +111,9 @@ export async function crearTurno(_previo: Resultado, datos: FormData): Promise<R
     }
   }
 
-  const choque = await hayChoque(supabase, profesionalId, fecha, horaInicio, horaFin)
-  if (choque) {
-    return {
-      error:
-        'Ese horario ya está ocupado (' +
-        choque.hora_inicio.slice(0, 5) +
-        '–' +
-        choque.hora_fin.slice(0, 5) +
-        '). Elegí otro horario.',
-    }
+  const capacidad = await capacidadDisponible(supabase, profesionalId, fecha, horaInicio, horaFin, tipoSesion)
+  if (!capacidad.disponible) {
+    return { error: capacidad.motivo! }
   }
 
   const { data: turno, error } = await supabase
@@ -196,12 +189,11 @@ export async function reprogramarTurno(_previo: Resultado, datos: FormData): Pro
     }
   }
 
-  const choque = await hayChoque(supabase, turno.profesional_id, fecha, horaInicio, horaFin, turno.id)
-  if (choque) {
-    return {
-      error:
-        'Ese horario ya está ocupado (' + choque.hora_inicio.slice(0, 5) + '–' + choque.hora_fin.slice(0, 5) + ').',
-    }
+  const capacidad = await capacidadDisponible(
+    supabase, turno.profesional_id, fecha, horaInicio, horaFin, turno.tipo_sesion, turno.id,
+  )
+  if (!capacidad.disponible) {
+    return { error: capacidad.motivo! }
   }
 
   const { error } = await supabase

@@ -248,8 +248,21 @@ export interface Franja {
 }
 
 /**
+ * Cuántos turnos vigentes puede haber a la vez con el mismo profesional en
+ * el mismo horario (sala compartida), y cuántos de esos cupos son de uso
+ * general — el resto queda reservado para turnos de tipo Ingreso.
+ * Espejo de capacidad_turnos_simultaneos()/cupos_generales_simultaneos()
+ * en la base (0006_capacidad_turnos_simultaneos.sql): la última palabra
+ * la tiene siempre el trigger ahí, esto es solo para no ofrecer en la UI
+ * algo que sabemos que va a rebotar.
+ */
+export const CUPO_TOTAL_SIMULTANEO = 4
+export const CUPO_GENERAL_SIMULTANEO = 3
+
+/**
  * Horarios que se le pueden ofrecer para un turno: dentro de las franjas
- * declaradas por el profesional (UC-09) y sin choque con turnos vigentes (UC-03).
+ * declaradas por el profesional (UC-09) y con lugar en la capacidad
+ * simultánea del profesional para ese horario (UC-03).
  * `excluir` sirve al reprogramar, para no chocar con el propio turno.
  */
 export async function slotsDisponibles(
@@ -270,7 +283,7 @@ export async function slotsDisponibles(
       .order('hora_inicio'),
     supabase
       .from('turnos')
-      .select('id, hora_inicio, hora_fin')
+      .select('id, hora_inicio, hora_fin, tipo_sesion')
       .eq('profesional_id', profesionalId)
       .eq('fecha', fecha)
       .in('estado', ESTADOS_VIGENTES),
@@ -280,7 +293,9 @@ export async function slotsDisponibles(
   if (turnos.error) throw new Error(turnos.error.message)
 
   const franjas = (horarios.data ?? []) as unknown as { hora_inicio: string; hora_fin: string }[]
-  const tomados = ((turnos.data ?? []) as unknown as { id: string; hora_inicio: string; hora_fin: string }[])
+  const tomados = (
+    (turnos.data ?? []) as unknown as { id: string; hora_inicio: string; hora_fin: string; tipo_sesion: string }[]
+  )
     .filter((t) => t.id !== excluir)
     .map((t) => ({ desde: minutos(t.hora_inicio), hasta: minutos(t.hora_fin) }))
 
@@ -289,16 +304,76 @@ export async function slotsDisponibles(
     for (const inicio of grillaHoraria(f.hora_inicio, f.hora_fin, duracionMin)) {
       const desde = minutos(inicio)
       const hasta = desde + duracionMin
-      const choca = tomados.some((t) => desde < t.hasta && hasta > t.desde)
-      if (!choca) libres.push({ inicio, fin: desdeMinutos(hasta) })
+      const solapados = tomados.filter((t) => desde < t.hasta && hasta > t.desde).length
+      // Libre = queda lugar para al menos un Ingreso; el chequeo exacto por
+      // tipo lo hace capacidadDisponible al confirmar.
+      if (solapados < CUPO_TOTAL_SIMULTANEO) libres.push({ inicio, fin: desdeMinutos(hasta) })
     }
+  }
+
+  const ocupadosSet = new Map<string, Franja>()
+  for (const t of tomados) {
+    const franja = { inicio: desdeMinutos(t.desde), fin: desdeMinutos(t.hasta) }
+    ocupadosSet.set(franja.inicio + '-' + franja.fin, franja)
   }
 
   return {
     libres,
-    ocupados: tomados.map((t) => ({ inicio: desdeMinutos(t.desde), fin: desdeMinutos(t.hasta) })),
+    ocupados: [...ocupadosSet.values()],
     atiende: franjas.length > 0,
   }
+}
+
+export interface Capacidad {
+  disponible: boolean
+  motivo?: string
+}
+
+/**
+ * ¿Hay lugar para un turno de este tipo en este rango, con este
+ * profesional? Espejo en JS de hay_lugar_turno() en la base — sirve para
+ * dar un error claro antes de intentar el insert; el trigger de
+ * turnos_capacidad es quien de verdad lo hace cumplir.
+ * `excluir` sirve al reprogramar, para no contar el propio turno.
+ */
+export async function capacidadDisponible(
+  supabase: Cliente,
+  profesionalId: string,
+  fecha: string,
+  inicio: string,
+  fin: string,
+  tipoSesion: string,
+  excluir?: string,
+): Promise<Capacidad> {
+  let q = supabase
+    .from('turnos')
+    .select('id, tipo_sesion')
+    .eq('profesional_id', profesionalId)
+    .eq('fecha', fecha)
+    .in('estado', ESTADOS_VIGENTES)
+    .lt('hora_inicio', fin)
+    .gt('hora_fin', inicio)
+  if (excluir) q = q.neq('id', excluir)
+
+  const { data, error } = await q
+  if (error) throw new Error(error.message)
+
+  const solapados = (data ?? []) as unknown as { id: string; tipo_sesion: string }[]
+  const total = solapados.length
+  const noIngreso = solapados.filter((t) => t.tipo_sesion !== 'Ingreso').length
+
+  if (total >= CUPO_TOTAL_SIMULTANEO) {
+    return { disponible: false, motivo: 'Ese horario ya está completo con este profesional.' }
+  }
+  if (tipoSesion !== 'Ingreso' && noIngreso >= CUPO_GENERAL_SIMULTANEO) {
+    return {
+      disponible: false,
+      motivo:
+        'Los ' + CUPO_GENERAL_SIMULTANEO + ' lugares generales de ese horario ya están ' +
+        'ocupados; el que queda es solo para un turno de tipo Ingreso.',
+    }
+  }
+  return { disponible: true }
 }
 
 /** ¿La franja pedida cae dentro de los horarios declarados? (UC-09) */
@@ -323,27 +398,3 @@ export async function estaEnHorarioDeAtencion(
   )
 }
 
-/** ¿Ese profesional ya tiene algo vigente en esa franja? (excepción de UC-03) */
-export async function hayChoque(
-  supabase: Cliente,
-  profesionalId: string,
-  fecha: string,
-  inicio: string,
-  fin: string,
-  excluir?: string,
-): Promise<TurnoExpandido | null> {
-  let q = supabase
-    .from('turnos')
-    .select(SELECT_TURNO)
-    .eq('profesional_id', profesionalId)
-    .eq('fecha', fecha)
-    .in('estado', ESTADOS_VIGENTES)
-    .lt('hora_inicio', fin)
-    .gt('hora_fin', inicio)
-  if (excluir) q = q.neq('id', excluir)
-
-  const { data, error } = await q.limit(1)
-  if (error) throw new Error(error.message)
-  const fila = (data as unknown as FilaTurno[] | null)?.[0]
-  return fila ? expandir(fila) : null
-}
