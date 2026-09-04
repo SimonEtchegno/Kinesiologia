@@ -219,6 +219,15 @@ export default async function PaginaTurno({ params }: { params: Promise<{ id: st
               fecha={turno.fecha}
               horaActual={hhmm(turno.hora_inicio)}
               libres={libres}
+              aviso={{
+                centro: sesion.centro.nombre,
+                paciente: turno.paciente ? turno.paciente.nombre : 'paciente',
+                pacienteTelefono: turno.paciente?.telefono ?? null,
+                profesional: turno.profesional?.nombre,
+                sede: turno.sede?.nombre,
+                tipo: turno.tipo_sesion,
+                whatsappAutomatico: sesion.centro.whatsapp_ingreso_automatico,
+              }}
             />
           </section>
         )}

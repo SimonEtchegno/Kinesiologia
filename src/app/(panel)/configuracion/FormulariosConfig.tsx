@@ -343,12 +343,12 @@ export function FormWhatsapp({ centro }: { centro: Centro }) {
         />
         <span>
           <span className="block font-medium text-slate-800">
-            Al cargar un turno, preparar el WhatsApp de aviso
+            Al cargar o reprogramar un turno, preparar el WhatsApp de aviso
           </span>
           <span className="block text-sm text-slate-500">
-            Apenas guardás un turno, se abre WhatsApp con el mensaje escrito — de bienvenida si
-            es un Ingreso, o de confirmación para cualquier otro tipo. Vos lo revisás y lo
-            mandás.
+            Apenas guardás un turno nuevo o lo reprogramás, se abre WhatsApp con el mensaje
+            escrito — de bienvenida si es un Ingreso, o de confirmación (o de aviso del cambio de
+            horario, al reprogramar) para cualquier otro caso. Vos lo revisás y lo mandás.
           </span>
         </span>
       </label>

@@ -2,8 +2,21 @@
 
 import { useActionState, useState } from 'react'
 import { IconoAlerta, IconoCheck, IconoReloj, IconoX } from '@/componentes/Iconos'
+import EnviarWhatsApp from '@/componentes/EnviarWhatsApp'
 import type { Franja } from '@/lib/datos'
+import { mensajeReprogramado } from '@/lib/whatsapp'
 import { cancelarTurno, reprogramarTurno } from '../acciones'
+
+/** Lo que hace falta para armar el mensaje de WhatsApp al reprogramar. */
+export interface DatosAviso {
+  centro: string
+  paciente: string
+  pacienteTelefono: string | null
+  profesional?: string | null
+  sede?: string | null
+  tipo: string
+  whatsappAutomatico: boolean
+}
 
 /** UC-04 — Reprogramar o cancelar. */
 export default function AccionesTurno({
@@ -11,11 +24,13 @@ export default function AccionesTurno({
   fecha,
   horaActual,
   libres,
+  aviso,
 }: {
   turnoId: string
   fecha: string
   horaActual: string
   libres: Franja[]
+  aviso: DatosAviso
 }) {
   const [panel, setPanel] = useState<'nada' | 'reprogramar' | 'cancelar'>('nada')
 
@@ -25,11 +40,36 @@ export default function AccionesTurno({
   const [nuevaFecha, setNuevaFecha] = useState(fecha)
   const [nuevaHora, setNuevaHora] = useState('')
 
-  if (repro.ok || cancel.ok) {
+  if (repro.ok) {
+    return (
+      <div className="space-y-3">
+        <div className="aviso-ok" role="status">
+          <IconoCheck className="size-5 shrink-0" />
+          <span>{repro.ok}</span>
+        </div>
+        <EnviarWhatsApp
+          telefono={aviso.pacienteTelefono}
+          etiqueta="Avisar por WhatsApp"
+          autoAbrir={aviso.whatsappAutomatico}
+          mensaje={mensajeReprogramado({
+            centro: aviso.centro,
+            paciente: aviso.paciente,
+            profesional: aviso.profesional,
+            fecha: nuevaFecha,
+            hora: nuevaHora,
+            sede: aviso.sede,
+            tipo: aviso.tipo,
+          })}
+        />
+      </div>
+    )
+  }
+
+  if (cancel.ok) {
     return (
       <div className="aviso-ok" role="status">
         <IconoCheck className="size-5 shrink-0" />
-        <span>{repro.ok ?? cancel.ok}</span>
+        <span>{cancel.ok}</span>
       </div>
     )
   }

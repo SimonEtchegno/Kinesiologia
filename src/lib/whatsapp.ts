@@ -97,6 +97,19 @@ export function mensajeSegunTipo(d: DatosMensaje): string {
   return d.tipo === 'Ingreso' ? mensajeIngreso(d) : mensajeTurno(d)
 }
 
+/** Aviso de que un turno ya cargado cambió de fecha u horario. */
+export function mensajeReprogramado(d: DatosMensaje): string {
+  const notaIngreso =
+    d.tipo === 'Ingreso'
+      ? ' Para esa primera sesión, traé ropa cómoda y, si tenés, estudios o la indicación médica.'
+      : ''
+  return (
+    '¡Hola ' + d.paciente + '! Te escribo de ' + d.centro + ' para avisarte que tu turno se ' +
+    'reprogramó: ahora queda para ' + cuando(d) + '.' + notaIngreso + '\n\n' +
+    'Si no podés venir así, avisame y lo vemos. ¡Gracias!'
+  )
+}
+
 /** Para escribirle a un paciente desde su ficha, sin turno de por medio. */
 export function mensajeLibre(centro: string, paciente: string): string {
   return '¡Hola ' + paciente + '! Te escribo de ' + centro + '. '
