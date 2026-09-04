@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useActionState, useCallback, useEffect, useState } from 'react'
 import { IconoAlerta, IconoCheck, IconoReloj } from '@/componentes/Iconos'
+import BotonEnviar from '@/componentes/BotonEnviar'
 import EnviarWhatsApp from '@/componentes/EnviarWhatsApp'
 import SelectorPaciente from '@/componentes/SelectorPaciente'
 import SelectTipoSesion from '@/componentes/SelectTipoSesion'
@@ -66,7 +67,7 @@ export default function FormularioTurno({
 }: Props) {
   const router = useRouter()
   const [creado, setCreado] = useState<TurnoCreado | null>(null)
-  const [estado, accion, pendiente] = useActionState(async (prev: Awaited<ReturnType<typeof crearTurno>>, fd: FormData) => {
+  const [estado, accion] = useActionState(async (prev: Awaited<ReturnType<typeof crearTurno>>, fd: FormData) => {
     const r = await crearTurno(prev, fd)
     if (r.ok && r.id) {
       const pacienteId = String(fd.get('paciente_id') ?? '')
@@ -385,9 +386,9 @@ export default function FormularioTurno({
       </section>
 
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" className="boton-primario" disabled={pendiente || !hora}>
-          {pendiente ? 'Guardando…' : 'Confirmar turno'}
-        </button>
+        <BotonEnviar className="boton-primario" disabled={!hora} cargando="Guardando…">
+          Confirmar turno
+        </BotonEnviar>
         <Link href={'/agenda?fecha=' + fecha} className="boton-secundario">
           Volver a la agenda
         </Link>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useState } from 'react'
+import BotonEnviar from '@/componentes/BotonEnviar'
 import { IconoAlerta } from '@/componentes/Iconos'
 import SelectTipoSesion from '@/componentes/SelectTipoSesion'
 import { cambiarTipoSesion } from '../acciones'
@@ -15,7 +16,7 @@ export default function CambiarTipo({
 }) {
   const [abierto, setAbierto] = useState(false)
   const [tipo, setTipo] = useState(tipoActual)
-  const [estado, accion, pendiente] = useActionState(async (prev: Awaited<ReturnType<typeof cambiarTipoSesion>>, fd: FormData) => {
+  const [estado, accion] = useActionState(async (prev: Awaited<ReturnType<typeof cambiarTipoSesion>>, fd: FormData) => {
     const r = await cambiarTipoSesion(prev, fd)
     if (r.ok) setAbierto(false)
     return r
@@ -53,9 +54,9 @@ export default function CambiarTipo({
       <SelectTipoSesion id="tipo_sesion_editar" valor={tipo} onCambio={setTipo} />
 
       <div className="mt-3 flex gap-2">
-        <button type="submit" className="boton-primario boton-chico" disabled={pendiente}>
-          {pendiente ? 'Guardando…' : 'Guardar'}
-        </button>
+        <BotonEnviar className="boton-primario boton-chico" cargando="Guardando…">
+          Guardar
+        </BotonEnviar>
         <button
           type="button"
           onClick={() => setAbierto(false)}

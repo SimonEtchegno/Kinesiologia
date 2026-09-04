@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import BotonEnviar from '@/componentes/BotonEnviar'
 import { IconoReloj, IconoSede, IconoX } from '@/componentes/Iconos'
 import { Encabezado, Vacio } from '@/componentes/ui'
 import { DIAS_SEMANA, hhmm } from '@/lib/fechas'
@@ -118,13 +119,12 @@ export default async function PaginaHorarios({
                                     {nombreSede.get(f.sede_id)}
                                   </span>
                                 )}
-                                <button
-                                  type="submit"
+                                <BotonEnviar
                                   aria-label="Quitar esta franja"
-                                  className="grid size-6 place-items-center rounded-md text-marca-500 hover:bg-white hover:text-rose-600"
+                                  className="grid size-6 place-items-center rounded-md text-marca-500 hover:bg-white hover:text-rose-600 disabled:opacity-60"
                                 >
                                   <IconoX className="size-4" />
-                                </button>
+                                </BotonEnviar>
                               </span>
                             </form>
                           </li>

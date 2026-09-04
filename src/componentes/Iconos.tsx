@@ -233,4 +233,12 @@ export const IconoInfo = (p: Props) => (
   </Base>
 )
 
+/** Arco de carga: se le agrega `animate-spin` desde donde se usa. */
+export const IconoSpinner = (p: Props) => (
+  <Base {...p}>
+    <circle cx="12" cy="12" r="9" opacity="0.25" />
+    <path d="M21 12a9 9 0 0 0-9-9" />
+  </Base>
+)
+
 

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useActionState, useEffect, useState } from 'react'
 import AvisoAccion from '@/componentes/AvisoAccion'
+import BotonEnviar from '@/componentes/BotonEnviar'
 import { IconoCheck, IconoLink, IconoWhatsApp } from '@/componentes/Iconos'
 import type { Centro, Perfil } from '@/lib/dominio'
 import {
@@ -17,7 +18,7 @@ import {
 // Mis datos
 // ------------------------------------------------------------
 export function FormMisDatos({ perfil }: { perfil: Perfil }) {
-  const [estado, accion, pendiente] = useActionState(actualizarMisDatos, {})
+  const [estado, accion] = useActionState(actualizarMisDatos, {})
 
   return (
     <form action={accion}>
@@ -68,9 +69,9 @@ export function FormMisDatos({ perfil }: { perfil: Perfil }) {
         </div>
       </div>
 
-      <button type="submit" className="boton-primario mt-5" disabled={pendiente}>
-        {pendiente ? 'Guardando…' : 'Guardar cambios'}
-      </button>
+      <BotonEnviar className="boton-primario mt-5" cargando="Guardando…">
+        Guardar cambios
+      </BotonEnviar>
     </form>
   )
 }
@@ -81,7 +82,7 @@ export function FormMisDatos({ perfil }: { perfil: Perfil }) {
 export function FormClave({ primeraVez = false }: { primeraVez?: boolean }) {
   const router = useRouter()
 
-  const [estado, accion, pendiente] = useActionState(async (prev: Awaited<ReturnType<typeof cambiarClave>>, fd: FormData) => {
+  const [estado, accion] = useActionState(async (prev: Awaited<ReturnType<typeof cambiarClave>>, fd: FormData) => {
     const r = await cambiarClave(prev, fd)
     if (r.ok && primeraVez) {
       router.replace('/agenda')
@@ -127,9 +128,9 @@ export function FormClave({ primeraVez = false }: { primeraVez?: boolean }) {
         </div>
       </div>
 
-      <button type="submit" className="boton-primario mt-5" disabled={pendiente}>
-        {pendiente ? 'Guardando…' : primeraVez ? 'Guardar y entrar' : 'Cambiar contraseña'}
-      </button>
+      <BotonEnviar className="boton-primario mt-5" cargando="Guardando…">
+        {primeraVez ? 'Guardar y entrar' : 'Cambiar contraseña'}
+      </BotonEnviar>
     </form>
   )
 }
@@ -138,7 +139,7 @@ export function FormClave({ primeraVez = false }: { primeraVez?: boolean }) {
 // Centro (solo admin)
 // ------------------------------------------------------------
 export function FormCentro({ centro }: { centro: Centro }) {
-  const [estado, accion, pendiente] = useActionState(actualizarCentro, {})
+  const [estado, accion] = useActionState(actualizarCentro, {})
 
   return (
     <form action={accion}>
@@ -212,9 +213,9 @@ export function FormCentro({ centro }: { centro: Centro }) {
         </span>
       </label>
 
-      <button type="submit" className="boton-primario mt-5" disabled={pendiente}>
-        {pendiente ? 'Guardando…' : 'Guardar cambios'}
-      </button>
+      <BotonEnviar className="boton-primario mt-5" cargando="Guardando…">
+        Guardar cambios
+      </BotonEnviar>
     </form>
   )
 }
@@ -223,7 +224,7 @@ export function FormCentro({ centro }: { centro: Centro }) {
 // Turnos online (solo admin)
 // ------------------------------------------------------------
 export function FormReservas({ centro }: { centro: Centro }) {
-  const [estado, accion, pendiente] = useActionState(actualizarReservas, {})
+  const [estado, accion] = useActionState(actualizarReservas, {})
 
   const [link, setLink] = useState('')
   const [copiado, setCopiado] = useState(false)
@@ -287,9 +288,9 @@ export function FormReservas({ centro }: { centro: Centro }) {
         </label>
       </div>
 
-      <button type="submit" className="boton-primario mt-5" disabled={pendiente}>
-        {pendiente ? 'Guardando…' : 'Guardar'}
-      </button>
+      <BotonEnviar className="boton-primario mt-5" cargando="Guardando…">
+        Guardar
+      </BotonEnviar>
 
       {centro.reservas_publicas && (
         <div className="mt-5 rounded-lg border border-linea bg-slate-50/70 p-4">
@@ -327,7 +328,7 @@ export function FormReservas({ centro }: { centro: Centro }) {
 // WhatsApp (solo admin)
 // ------------------------------------------------------------
 export function FormWhatsapp({ centro }: { centro: Centro }) {
-  const [estado, accion, pendiente] = useActionState(actualizarWhatsapp, {})
+  const [estado, accion] = useActionState(actualizarWhatsapp, {})
 
   return (
     <form action={accion}>
@@ -359,9 +360,9 @@ export function FormWhatsapp({ centro }: { centro: Centro }) {
         sea ingreso o no.
       </p>
 
-      <button type="submit" className="boton-primario mt-5" disabled={pendiente}>
-        {pendiente ? 'Guardando…' : 'Guardar'}
-      </button>
+      <BotonEnviar className="boton-primario mt-5" cargando="Guardando…">
+        Guardar
+      </BotonEnviar>
     </form>
   )
 }

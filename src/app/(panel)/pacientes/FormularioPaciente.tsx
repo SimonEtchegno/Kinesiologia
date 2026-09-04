@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useActionState, useState } from 'react'
+import BotonEnviar from '@/componentes/BotonEnviar'
 import { IconoAlerta } from '@/componentes/Iconos'
 import { COBERTURAS, type Cobertura, type Paciente } from '@/lib/dominio'
 import { actualizarPaciente, crearPaciente, type Resultado } from './acciones'
@@ -12,7 +13,7 @@ export default function FormularioPaciente({ paciente }: { paciente?: Paciente }
   const esEdicion = Boolean(paciente)
   const router = useRouter()
 
-  const [estado, accion, pendiente] = useActionState<Resultado, FormData>(async (prev, fd) => {
+  const [estado, accion] = useActionState<Resultado, FormData>(async (prev, fd) => {
     const r = esEdicion ? await actualizarPaciente(prev, fd) : await crearPaciente(prev, fd)
     if (r.ok && (r.id || paciente?.id)) {
       router.push('/pacientes/' + (r.id ?? paciente?.id))
@@ -194,9 +195,9 @@ export default function FormularioPaciente({ paciente }: { paciente?: Paciente }
       </section>
 
       <div className="flex flex-wrap gap-3">
-        <button type="submit" className="boton-primario" disabled={pendiente}>
-          {pendiente ? 'Guardando…' : esEdicion ? 'Guardar cambios' : 'Dar de alta'}
-        </button>
+        <BotonEnviar className="boton-primario" cargando="Guardando…">
+          {esEdicion ? 'Guardar cambios' : 'Dar de alta'}
+        </BotonEnviar>
         <Link
           href={paciente ? '/pacientes/' + paciente.id : '/pacientes'}
           className="boton-secundario"

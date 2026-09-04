@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import AvisoAccion from '@/componentes/AvisoAccion'
+import BotonEnviar from '@/componentes/BotonEnviar'
 import { IconoMas } from '@/componentes/Iconos'
 import type { Sede } from '@/lib/dominio'
 import { DIAS_CORTOS } from '@/lib/fechas'
@@ -15,7 +16,7 @@ export default function FormHorario({
   profesionalId: string
   sedes: Sede[]
 }) {
-  const [estado, accion, pendiente] = useActionState(agregarHorario, {})
+  const [estado, accion] = useActionState(agregarHorario, {})
 
   // Lunes a sábado primero; el domingo al final, como se lee una agenda.
   const orden = [1, 2, 3, 4, 5, 6, 0]
@@ -92,10 +93,10 @@ export default function FormHorario({
           </div>
         )}
 
-        <button type="submit" className="boton-primario mb-0.5" disabled={pendiente}>
+        <BotonEnviar className="boton-primario mb-0.5" cargando="Agregando…">
           <IconoMas className="size-[1.05rem]" />
-          {pendiente ? 'Agregando…' : 'Agregar franja'}
-        </button>
+          Agregar franja
+        </BotonEnviar>
       </div>
 
       <p className="ayuda">

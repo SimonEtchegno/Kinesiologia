@@ -10,6 +10,7 @@ import {
   IconoPacientes,
   IconoTelefono,
 } from '@/componentes/Iconos'
+import BotonEnviar from '@/componentes/BotonEnviar'
 import EnviarWhatsApp from '@/componentes/EnviarWhatsApp'
 import { ChipEstado, Dato, Encabezado, Vacio } from '@/componentes/ui'
 import { COBERTURAS, iniciales, tipoSesionDe } from '@/lib/dominio'
@@ -221,12 +222,12 @@ export default async function PaginaPaciente({
           <form action={cambiarActivoPaciente} className="no-imprimir">
             <input type="hidden" name="id" value={paciente.id} />
             <input type="hidden" name="activo" value={paciente.activo ? 'no' : 'si'} />
-            <button
-              type="submit"
+            <BotonEnviar
               className={(paciente.activo ? 'boton-peligro' : 'boton-secundario') + ' boton-chico w-full'}
+              cargando={paciente.activo ? 'Dando de baja…' : 'Reactivando…'}
             >
               {paciente.activo ? 'Dar de baja al paciente' : 'Reactivar al paciente'}
-            </button>
+            </BotonEnviar>
           </form>
         </div>
 

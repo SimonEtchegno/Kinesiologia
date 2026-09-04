@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import BotonEnviar from '@/componentes/BotonEnviar'
 import {
   IconoAgenda,
   IconoCheck,
@@ -180,13 +181,13 @@ export default function VistaDia({
                 <form action={marcarTurno}>
                   <input type="hidden" name="turno_id" value={t.id} />
                   <input type="hidden" name="estado" value="realizado" />
-                  <button
-                    type="submit"
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-2xs transition-all hover:bg-emerald-700 active:scale-95"
+                  <BotonEnviar
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-2xs transition-all hover:bg-emerald-700 active:scale-95 disabled:opacity-70"
+                    cargando="Realizado"
                   >
                     <IconoCheck className="size-3.5" />
                     <span>Realizado</span>
-                  </button>
+                  </BotonEnviar>
                 </form>
               )}
 
@@ -194,13 +195,13 @@ export default function VistaDia({
                 <form action={marcarTurno}>
                   <input type="hidden" name="turno_id" value={t.id} />
                   <input type="hidden" name="estado" value="ausente" />
-                  <button
-                    type="submit"
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-rose-950/40 dark:hover:text-rose-300"
+                  <BotonEnviar
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 active:scale-95 disabled:opacity-70 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-rose-950/40 dark:hover:text-rose-300"
+                    cargando="Ausente"
                   >
                     <IconoX className="size-3.5" />
                     <span>Ausente</span>
-                  </button>
+                  </BotonEnviar>
                 </form>
               )}
 

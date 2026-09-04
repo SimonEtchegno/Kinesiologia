@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useActionState } from 'react'
 import { IconoAlerta } from '@/componentes/Iconos'
+import BotonEnviar from '@/componentes/BotonEnviar'
 import BotonGoogle from '@/componentes/BotonGoogle'
 import { clienteNavegador } from '@/lib/supabase/navegador'
 import { mensajeDeError } from '@/lib/supabase/mensajes'
@@ -20,7 +21,7 @@ export default function FormularioLogin({
 }) {
   const router = useRouter()
 
-  const [estado, accion, pendiente] = useActionState<EstadoLogin, FormData>(async (_prev, fd) => {
+  const [estado, accion] = useActionState<EstadoLogin, FormData>(async (_prev, fd) => {
     const email = String(fd.get('email') ?? '').trim()
     const password = String(fd.get('password') ?? '')
     if (!email || !password) return { error: 'Ingresá tu email y tu contraseña.' }
@@ -75,9 +76,9 @@ export default function FormularioLogin({
           />
         </div>
 
-        <button type="submit" className="boton-primario w-full py-3" disabled={pendiente}>
-          {pendiente ? 'Entrando…' : 'Entrar'}
-        </button>
+        <BotonEnviar className="boton-primario w-full py-3" cargando="Entrando…">
+          Entrar
+        </BotonEnviar>
       </form>
 
       <div className="flex items-center gap-3 text-xs text-slate-400">

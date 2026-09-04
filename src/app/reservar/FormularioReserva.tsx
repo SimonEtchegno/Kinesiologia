@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useEffect, useState } from 'react'
+import BotonEnviar from '@/componentes/BotonEnviar'
 import { IconoAlerta, IconoCheck, IconoReloj, IconoSede } from '@/componentes/Iconos'
 import EnviarWhatsApp from '@/componentes/EnviarWhatsApp'
 import { COBERTURAS } from '@/lib/dominio'
@@ -34,7 +35,7 @@ export default function FormularioReserva({
   const [libres, setLibres] = useState<Franja[]>([])
   const [confirmado, setConfirmado] = useState<Confirmado | null>(null)
 
-  const [estado, accion, pendiente] = useActionState<ResultadoReserva, FormData>(async (prev, fd) => {
+  const [estado, accion] = useActionState<ResultadoReserva, FormData>(async (prev, fd) => {
     const r = await reservarTurno(centro.id, prev, fd)
     if (r.ok) {
       setConfirmado({
@@ -350,9 +351,9 @@ export default function FormularioReserva({
       </section>
 
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" className="boton-primario" disabled={pendiente || !hora}>
-          {pendiente ? 'Reservando…' : 'Reservar turno'}
-        </button>
+        <BotonEnviar className="boton-primario" disabled={!hora} cargando="Reservando…">
+          Reservar turno
+        </BotonEnviar>
         {hora && (
           <p className="text-sm text-slate-500 first-letter:uppercase">
             {formatearFechaLarga(fecha)} a las <strong className="font-semibold text-slate-800">{hora}</strong>

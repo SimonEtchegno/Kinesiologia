@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { FormClave } from '@/app/(panel)/configuracion/FormulariosConfig'
+import BotonEnviar from '@/componentes/BotonEnviar'
 import { IconoEscudo } from '@/componentes/Iconos'
 import { alSalir } from '@/lib/accionesAuth'
 import { exigirSesion } from '@/lib/sesion'
@@ -37,9 +38,12 @@ export default async function PaginaCambiarClave() {
         </div>
 
         <form action={alSalir} className="mt-5">
-          <button type="submit" className="block w-full text-center text-sm text-slate-500 hover:underline">
+          <BotonEnviar
+            className="flex w-full items-center justify-center gap-1.5 text-center text-sm text-slate-500 hover:underline"
+            cargando="Saliendo…"
+          >
             Salir
-          </button>
+          </BotonEnviar>
         </form>
       </div>
     </main>

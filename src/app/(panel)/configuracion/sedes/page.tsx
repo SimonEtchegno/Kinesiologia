@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import BotonEnviar from '@/componentes/BotonEnviar'
 import { IconoSede } from '@/componentes/Iconos'
 import { Encabezado, Vacio } from '@/componentes/ui'
 import { listarSedes } from '@/lib/datos'
@@ -64,12 +65,12 @@ export default async function PaginaSedes() {
                   <form action={cambiarActivaSede} className="no-imprimir">
                     <input type="hidden" name="id" value={s.id} />
                     <input type="hidden" name="activa" value={s.activa ? 'no' : 'si'} />
-                    <button
-                      type="submit"
+                    <BotonEnviar
                       className={(s.activa ? 'boton-peligro' : 'boton-secundario') + ' boton-chico'}
+                      cargando={s.activa ? 'Desactivando…' : 'Reactivando…'}
                     >
                       {s.activa ? 'Desactivar' : 'Reactivar'}
-                    </button>
+                    </BotonEnviar>
                   </form>
                 </li>
               ))}

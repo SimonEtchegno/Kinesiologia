@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from 'react'
 import { IconoAlerta, IconoCheck, IconoReloj, IconoX } from '@/componentes/Iconos'
+import BotonEnviar from '@/componentes/BotonEnviar'
 import EnviarWhatsApp from '@/componentes/EnviarWhatsApp'
 import type { Franja } from '@/lib/datos'
 import { mensajeReprogramado } from '@/lib/whatsapp'
@@ -34,8 +35,8 @@ export default function AccionesTurno({
 }) {
   const [panel, setPanel] = useState<'nada' | 'reprogramar' | 'cancelar'>('nada')
 
-  const [repro, accionRepro, reproPendiente] = useActionState(reprogramarTurno, {})
-  const [cancel, accionCancel, cancelPendiente] = useActionState(cancelarTurno, {})
+  const [repro, accionRepro] = useActionState(reprogramarTurno, {})
+  const [cancel, accionCancel] = useActionState(cancelarTurno, {})
 
   const [nuevaFecha, setNuevaFecha] = useState(fecha)
   const [nuevaHora, setNuevaHora] = useState('')
@@ -180,9 +181,9 @@ export default function AccionesTurno({
           </p>
 
           <div className="mt-4 flex gap-2">
-            <button type="submit" className="boton-primario boton-chico" disabled={reproPendiente}>
-              {reproPendiente ? 'Guardando…' : 'Confirmar cambio'}
-            </button>
+            <BotonEnviar className="boton-primario boton-chico" cargando="Guardando…">
+              Confirmar cambio
+            </BotonEnviar>
             <button
               type="button"
               onClick={() => setPanel('nada')}
@@ -221,9 +222,9 @@ export default function AccionesTurno({
           </p>
 
           <div className="mt-4 flex gap-2">
-            <button type="submit" className="boton-peligro boton-chico" disabled={cancelPendiente}>
-              {cancelPendiente ? 'Cancelando…' : 'Sí, cancelar'}
-            </button>
+            <BotonEnviar className="boton-peligro boton-chico" cargando="Cancelando…">
+              Sí, cancelar
+            </BotonEnviar>
             <button
               type="button"
               onClick={() => setPanel('nada')}

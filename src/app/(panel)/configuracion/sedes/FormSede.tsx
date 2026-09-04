@@ -2,12 +2,13 @@
 
 import { useActionState } from 'react'
 import AvisoAccion from '@/componentes/AvisoAccion'
+import BotonEnviar from '@/componentes/BotonEnviar'
 import { IconoMas } from '@/componentes/Iconos'
 import { crearSede } from '../acciones'
 
 /** Alta de una sede nueva del centro. */
 export default function FormSede() {
-  const [estado, accion, pendiente] = useActionState(crearSede, {})
+  const [estado, accion] = useActionState(crearSede, {})
 
   return (
     <form action={accion} key={estado.id ?? 'nueva'}>
@@ -32,10 +33,10 @@ export default function FormSede() {
           </label>
           <input id="sede_direccion" name="direccion" placeholder="Opcional" className="campo" />
         </div>
-        <button type="submit" className="boton-primario mb-0.5" disabled={pendiente}>
+        <BotonEnviar className="boton-primario mb-0.5" cargando="Agregando…">
           <IconoMas className="size-[1.05rem]" />
-          {pendiente ? 'Agregando…' : 'Agregar sede'}
-        </button>
+          Agregar sede
+        </BotonEnviar>
       </div>
     </form>
   )

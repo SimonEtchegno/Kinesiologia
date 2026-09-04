@@ -13,6 +13,7 @@ import {
   IconoSalir,
   IconoX,
 } from '@/componentes/Iconos'
+import BotonEnviar from '@/componentes/BotonEnviar'
 import BotonTema from '@/componentes/BotonTema'
 import { iniciales } from '@/lib/dominio'
 
@@ -110,10 +111,10 @@ export default function Sidebar({ nombre, email, rolEtiqueta, centro, esAdmin, a
           <BotonTema />
         </div>
         <form action={alSalir}>
-          <button type="submit" className="boton-fantasma boton-chico w-full justify-start">
+          <BotonEnviar className="boton-fantasma boton-chico w-full justify-start" cargando="Saliendo…">
             <IconoSalir className="size-[1.05rem] text-slate-400" />
             Cerrar sesión
-          </button>
+          </BotonEnviar>
         </form>
       </div>
     </div>

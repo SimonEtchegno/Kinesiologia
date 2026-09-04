@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useState } from 'react'
+import BotonEnviar from '@/componentes/BotonEnviar'
 import { IconoAlerta, IconoCheck, IconoNota } from '@/componentes/Iconos'
 import type { Observacion } from '@/lib/dominio'
 import { guardarObservacion } from '../acciones'
@@ -25,7 +26,7 @@ export default function FormObservacion({
   turnoId: string
   observacion: Observacion | null
 }) {
-  const [estado, accion, pendiente] = useActionState(guardarObservacion, {})
+  const [estado, accion] = useActionState(guardarObservacion, {})
   const [dolor, setDolor] = useState<string>(
     observacion?.dolor_referido != null ? String(observacion.dolor_referido) : '',
   )
@@ -152,9 +153,9 @@ export default function FormObservacion({
       </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <button type="submit" className="boton-acento" disabled={pendiente}>
-          {pendiente ? 'Guardando…' : observacion ? 'Guardar cambios' : 'Guardar observación'}
-        </button>
+        <BotonEnviar className="boton-acento" cargando="Guardando…">
+          {observacion ? 'Guardar cambios' : 'Guardar observación'}
+        </BotonEnviar>
         <p className="text-xs text-slate-400">Ctrl + Enter para guardar</p>
       </div>
     </form>

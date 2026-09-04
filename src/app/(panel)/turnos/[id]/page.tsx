@@ -9,6 +9,7 @@ import {
   IconoSede,
   IconoX,
 } from '@/componentes/Iconos'
+import BotonEnviar from '@/componentes/BotonEnviar'
 import EnviarWhatsApp from '@/componentes/EnviarWhatsApp'
 import { ChipEstado, Dato, Encabezado, Vacio } from '@/componentes/ui'
 import {
@@ -190,19 +191,27 @@ export default async function PaginaTurno({ params }: { params: Promise<{ id: st
               <form action={marcarTurno}>
                 <input type="hidden" name="turno_id" value={turno.id} />
                 <input type="hidden" name="estado" value="realizado" />
-                <button type="submit" disabled={!llego || turno.estado === 'realizado'} className="boton-acento boton-chico">
+                <BotonEnviar
+                  disabled={!llego || turno.estado === 'realizado'}
+                  className="boton-acento boton-chico"
+                  cargando="Marcando…"
+                >
                   <IconoCheck className="size-4" />
                   {turno.estado === 'realizado' ? 'Realizado' : 'Marcar realizado'}
-                </button>
+                </BotonEnviar>
               </form>
 
               <form action={marcarTurno}>
                 <input type="hidden" name="turno_id" value={turno.id} />
                 <input type="hidden" name="estado" value="ausente" />
-                <button type="submit" disabled={!llego || turno.estado === 'ausente'} className="boton-secundario boton-chico">
+                <BotonEnviar
+                  disabled={!llego || turno.estado === 'ausente'}
+                  className="boton-secundario boton-chico"
+                  cargando="Marcando…"
+                >
                   <IconoX className="size-4" />
                   {turno.estado === 'ausente' ? 'Ausente' : 'Marcar ausente'}
-                </button>
+                </BotonEnviar>
               </form>
             </div>
           </section>
