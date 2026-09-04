@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import BotonEnviar from '@/componentes/BotonEnviar'
-import { IconoBuscar, IconoMas, IconoPacientes } from '@/componentes/Iconos'
+import { IconoBuscar, IconoCheck, IconoMas, IconoPacientes, IconoX } from '@/componentes/Iconos'
 import { Encabezado, Vacio } from '@/componentes/ui'
 import { COBERTURAS, iniciales } from '@/lib/dominio'
 import { buscarPacientes } from '@/lib/datos'
@@ -14,17 +14,43 @@ export const metadata: Metadata = {
   title: 'Pacientes',
 }
 
-/** Dar de baja o reactivar, sin entrar a la ficha. No borra nada: conserva el historial. */
-function BotonBaja({ id, activo }: { id: string; activo: boolean }) {
+/**
+ * Dar de baja o reactivar, sin entrar a la ficha. No borra nada: conserva
+ * el historial. En la tabla de escritorio va solo con ícono — con texto,
+ * "Dar de baja" no entraba en la columna y el botón terminaba partido en
+ * tres líneas; en la tarjeta de mobile hay lugar de sobra, así que ahí
+ * lleva la etiqueta al lado (más claro al tacto).
+ */
+function BotonBaja({
+  id,
+  activo,
+  conTexto = false,
+}: {
+  id: string
+  activo: boolean
+  conTexto?: boolean
+}) {
+  const etiqueta = activo ? 'Dar de baja' : 'Reactivar'
   return (
     <form action={cambiarActivoPaciente} className="no-imprimir">
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="activo" value={activo ? 'no' : 'si'} />
       <BotonEnviar
-        className={(activo ? 'boton-peligro' : 'boton-secundario') + ' boton-chico'}
-        cargando={activo ? 'Dando de baja…' : 'Reactivando…'}
+        aria-label={etiqueta + ' al paciente'}
+        title={conTexto ? undefined : etiqueta}
+        cargando={conTexto ? (activo ? 'Dando de baja…' : 'Reactivando…') : undefined}
+        className={
+          (conTexto
+            ? 'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold whitespace-nowrap '
+            : 'grid size-8 shrink-0 place-items-center rounded-lg border ') +
+          'transition-colors disabled:opacity-60 ' +
+          (activo
+            ? 'border-rose-200 text-rose-600 hover:bg-rose-50 dark:border-rose-900/60 dark:text-rose-400 dark:hover:bg-rose-950/40'
+            : 'border-linea text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800')
+        }
       >
-        {activo ? 'Dar de baja' : 'Reactivar'}
+        {activo ? <IconoX className="size-4" /> : <IconoCheck className="size-4" />}
+        {conTexto && etiqueta}
       </BotonEnviar>
     </form>
   )
@@ -141,7 +167,7 @@ export default async function PaginaPacientes({
                     </span>
                   </Link>
                   <div className="flex justify-end border-t border-linea px-4 py-2.5">
-                    <BotonBaja id={p.id} activo={p.activo} />
+                    <BotonBaja id={p.id} activo={p.activo} conTexto />
                   </div>
                 </li>
               )
@@ -194,7 +220,7 @@ export default async function PaginaPacientes({
                           {p.telefono ?? p.email ?? <span className="text-slate-400">—</span>}
                         </td>
                         <td className="text-right">
-                          <div className="flex flex-wrap items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-2 whitespace-nowrap">
                             <Link href={'/pacientes/' + p.id} className="boton-fantasma boton-chico">
                               Ver ficha
                             </Link>
