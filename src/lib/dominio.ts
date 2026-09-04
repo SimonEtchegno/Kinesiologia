@@ -15,7 +15,7 @@ export interface Centro {
   duracion_turno_min: number
   /** Si está en false, la página pública de reservas queda cerrada. */
   reservas_publicas: boolean
-  /** Al cargar un ingreso, ofrecer el WhatsApp de bienvenida sin que se lo pidan. */
+  /** Al cargar cualquier turno, ofrecer el WhatsApp de aviso sin que se lo pidan. */
   whatsapp_ingreso_automatico: boolean
   /** Teléfono del centro, el que ve el paciente para escribir. */
   telefono: string | null

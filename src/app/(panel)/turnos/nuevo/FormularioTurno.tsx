@@ -146,7 +146,7 @@ export default function FormularioTurno({
               telefono={creado.pacienteTelefono}
               variante="acento"
               etiqueta={esIngreso(creado.tipo) ? 'WhatsApp de bienvenida' : 'Avisar por WhatsApp'}
-              autoAbrir={esIngreso(creado.tipo) && centro.whatsapp_ingreso_automatico}
+              autoAbrir={centro.whatsapp_ingreso_automatico}
               mensaje={mensajeSegunTipo({
                 centro: centro.nombre,
                 paciente: creado.pacienteNombre.split(' ')[0] || creado.pacienteNombre,

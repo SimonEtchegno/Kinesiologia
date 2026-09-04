@@ -146,11 +146,12 @@ persona con un toque, y puede editar el mensaje antes de mandarlo
 
 - El botón de WhatsApp está disponible **para cualquier turno** (en su
   detalle) y **en la ficha de cada paciente**, sin condición de tipo o rol.
-- Si en Configuración → WhatsApp está activo "Al cargar un ingreso,
-  preparar el WhatsApp de bienvenida" (por defecto sí), al guardar un turno
-  de tipo `Ingreso` se intenta abrir WhatsApp solo con el mensaje de
-  bienvenida (fecha, hora, profesional, qué llevar); si el navegador
-  bloquea la ventana emergente, queda el botón a mano para abrirla.
+- Si en Configuración → WhatsApp está activo "Al cargar un turno, preparar
+  el WhatsApp de aviso" (por defecto sí), al guardar cualquier turno se
+  intenta abrir WhatsApp solo con el mensaje que corresponda: de bienvenida
+  (fecha, hora, profesional, qué llevar) si es un `Ingreso`, o de
+  confirmación para cualquier otro tipo; si el navegador bloquea la
+  ventana emergente, queda el botón a mano para abrirla.
 - Los mensajes de ingreso y de recordatorio son plantillas de texto en
   `mensajeIngreso` / `mensajeTurno` — se editan ahí si hace falta cambiar la
   redacción.

@@ -273,7 +273,7 @@ export async function actualizarReservas(_previo: Resultado, datos: FormData): P
 }
 
 // ============================================================
-// WhatsApp automático al cargar un ingreso
+// WhatsApp automático al cargar un turno
 // ============================================================
 export async function actualizarWhatsapp(_previo: Resultado, datos: FormData): Promise<Resultado> {
   const sesion = await exigirAdmin()
@@ -289,8 +289,8 @@ export async function actualizarWhatsapp(_previo: Resultado, datos: FormData): P
   revalidatePath('/configuracion')
   return {
     ok: activo
-      ? 'Al cargar un ingreso te vamos a ofrecer el WhatsApp de bienvenida.'
-      : 'Listo: el WhatsApp de bienvenida ya no se ofrece solo. Igual lo tenés a mano en cada turno.',
+      ? 'Al cargar un turno te vamos a ofrecer el WhatsApp de aviso.'
+      : 'Listo: el WhatsApp ya no se ofrece solo. Igual lo tenés a mano en cada turno.',
   }
 }
 
