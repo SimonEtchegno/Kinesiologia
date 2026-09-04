@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import BotonEnviar from '@/componentes/BotonEnviar'
 import { IconoBuscar, IconoMas, IconoPacientes } from '@/componentes/Iconos'
 import { Encabezado, Vacio } from '@/componentes/ui'
 import { COBERTURAS, iniciales } from '@/lib/dominio'
@@ -7,9 +8,26 @@ import { buscarPacientes } from '@/lib/datos'
 import { edad } from '@/lib/fechas'
 import { exigirSesion } from '@/lib/sesion'
 import { clienteServidor } from '@/lib/supabase/servidor'
+import { cambiarActivoPaciente } from './acciones'
 
 export const metadata: Metadata = {
   title: 'Pacientes',
+}
+
+/** Dar de baja o reactivar, sin entrar a la ficha. No borra nada: conserva el historial. */
+function BotonBaja({ id, activo }: { id: string; activo: boolean }) {
+  return (
+    <form action={cambiarActivoPaciente} className="no-imprimir">
+      <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="activo" value={activo ? 'no' : 'si'} />
+      <BotonEnviar
+        className={(activo ? 'boton-peligro' : 'boton-secundario') + ' boton-chico'}
+        cargando={activo ? 'Dando de baja…' : 'Reactivando…'}
+      >
+        {activo ? 'Dar de baja' : 'Reactivar'}
+      </BotonEnviar>
+    </form>
+  )
 }
 
 export default async function PaginaPacientes({
@@ -122,6 +140,9 @@ export default async function PaginaPacientes({
                       </span>
                     </span>
                   </Link>
+                  <div className="flex justify-end border-t border-linea px-4 py-2.5">
+                    <BotonBaja id={p.id} activo={p.activo} />
+                  </div>
                 </li>
               )
             })}
@@ -135,7 +156,7 @@ export default async function PaginaPacientes({
                     <th>Paciente</th>
                     <th>Cobertura</th>
                     <th>Contacto</th>
-                    <th className="w-24" />
+                    <th className="w-1" />
                   </tr>
                 </thead>
                 <tbody>
@@ -173,9 +194,12 @@ export default async function PaginaPacientes({
                           {p.telefono ?? p.email ?? <span className="text-slate-400">—</span>}
                         </td>
                         <td className="text-right">
-                          <Link href={'/pacientes/' + p.id} className="boton-fantasma boton-chico">
-                            Ver ficha
-                          </Link>
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            <Link href={'/pacientes/' + p.id} className="boton-fantasma boton-chico">
+                              Ver ficha
+                            </Link>
+                            <BotonBaja id={p.id} activo={p.activo} />
+                          </div>
                         </td>
                       </tr>
                     )
