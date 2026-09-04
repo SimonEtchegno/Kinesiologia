@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { IconoDerecha, IconoPacientes, IconoReloj, IconoSede } from '@/componentes/Iconos'
+import { IconoDerecha, IconoReloj, IconoSede } from '@/componentes/Iconos'
 import { Encabezado } from '@/componentes/ui'
 import { exigirSesion } from '@/lib/sesion'
 import { FormCentro, FormClave, FormMisDatos, FormReservas, FormWhatsapp } from './FormulariosConfig'
@@ -43,24 +43,6 @@ export default async function PaginaConfiguracion() {
                 <span className="block font-semibold text-slate-900">Sedes</span>
                 <span className="block text-sm text-slate-500">
                   Los lugares donde atiende el centro
-                </span>
-              </span>
-              <IconoDerecha className="size-5 shrink-0 text-slate-300" />
-            </Link>
-          )}
-
-          {sesion.esAdmin && (
-            <Link
-              href="/configuracion/profesionales"
-              className="tarjeta flex items-center gap-4 p-5 transition-colors hover:border-marca-300 hover:bg-marca-50/40"
-            >
-              <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-acento-50 text-acento-700">
-                <IconoPacientes />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-semibold text-slate-900">Profesionales</span>
-                <span className="block text-sm text-slate-500">
-                  Altas, bajas y agendas del centro
                 </span>
               </span>
               <IconoDerecha className="size-5 shrink-0 text-slate-300" />

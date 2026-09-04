@@ -4,21 +4,12 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { esHora, minutos } from '@/lib/fechas'
 import { exigirAdmin, exigirSesion } from '@/lib/sesion'
-import { clienteAdmin } from '@/lib/supabase/admin'
 import { clienteServidor } from '@/lib/supabase/servidor'
 
 export interface Resultado {
   error?: string
   ok?: string
   id?: string
-  claveTemporal?: string
-}
-
-const ALFABETO_CLAVE = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-function claveTemporal(): string {
-  let out = ''
-  for (let i = 0; i < 8; i++) out += ALFABETO_CLAVE[Math.floor(Math.random() * ALFABETO_CLAVE.length)]
-  return 'kine-' + out.slice(0, 4) + '-' + out.slice(4, 8)
 }
 
 /** `exclusion_violation` de Postgres: dos franjas u horarios que se pisan. */
@@ -116,74 +107,6 @@ export async function cambiarClave(_previo: Resultado, datos: FormData): Promise
 
   revalidatePath('/', 'layout')
   return { ok: 'Contraseña actualizada.' }
-}
-
-// ============================================================
-// UC-10 — Dar de alta un kinesiólogo
-// ============================================================
-export async function crearProfesional(_previo: Resultado, datos: FormData): Promise<Resultado> {
-  const { centro } = await exigirAdmin()
-
-  const nombre = String(datos.get('nombre') ?? '').trim()
-  const email = String(datos.get('email') ?? '').trim().toLowerCase()
-  const especialidad = String(datos.get('especialidad') ?? '').trim() || null
-  const telefono = String(datos.get('telefono') ?? '').trim() || null
-  const rol = String(datos.get('rol') ?? 'kinesiologo') === 'admin' ? 'admin' : 'kinesiologo'
-
-  if (!nombre) return { error: 'Poné el nombre del profesional.' }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'El email no parece válido.' }
-
-  const clave = claveTemporal()
-
-  // centro_id sale de la sesión del admin que está pidiendo el alta, nunca
-  // del formulario: es lo que impide que alguien cuele un perfil en el
-  // centro de otro (ver trigger handle_new_user, PARTE 3 de la migración).
-  const { data, error } = await clienteAdmin().auth.admin.createUser({
-    email,
-    password: clave,
-    email_confirm: true,
-    app_metadata: {
-      centro_id: centro.id,
-      rol,
-      nombre,
-      especialidad,
-      telefono,
-      debe_cambiar_password: true,
-    },
-  })
-
-  if (error) {
-    if (error.message.toLowerCase().includes('already been registered')) {
-      return { error: 'Ya existe una cuenta con ese email.' }
-    }
-    return { error: error.message }
-  }
-
-  revalidatePath('/configuracion/profesionales')
-  return { ok: nombre + ' ya tiene cuenta y agenda propia.', claveTemporal: clave, id: data.user?.id }
-}
-
-export async function cambiarActivoProfesional(datos: FormData): Promise<void> {
-  const sesion = await exigirAdmin()
-  const id = String(datos.get('id') ?? '')
-  const activo = datos.get('activo') === 'si'
-  if (!id || id === sesion.perfil.id) return
-
-  const supabase = await clienteServidor()
-  await supabase.from('perfiles').update({ activo }).eq('id', id)
-  revalidatePath('/configuracion/profesionales')
-}
-
-/** El admin no puede cambiarse el rol a sí mismo: se quedaría afuera del panel. */
-export async function cambiarRolProfesional(datos: FormData): Promise<void> {
-  const sesion = await exigirAdmin()
-  const id = String(datos.get('id') ?? '')
-  const rol = String(datos.get('rol') ?? '') === 'admin' ? 'admin' : 'kinesiologo'
-  if (!id || id === sesion.perfil.id) return
-
-  const supabase = await clienteServidor()
-  await supabase.from('perfiles').update({ rol }).eq('id', id)
-  revalidatePath('/configuracion/profesionales')
 }
 
 // ============================================================

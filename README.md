@@ -42,9 +42,7 @@ cp .env.local.example .env.local
 ```
 
 Completá `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` con los
-valores del paso 1. `SUPABASE_SERVICE_ROLE_KEY` (Settings → API → service_role)
-es necesaria para que el administrador pueda dar de alta kinesiólogos nuevos
-(UC-10) — nunca se expone al navegador, ni lleva el prefijo `NEXT_PUBLIC_`.
+valores del paso 1.
 
 ### 4. Correr
 
@@ -57,7 +55,7 @@ Abrí `http://localhost:3000` y entrá con el usuario que creaste en el paso 2.
 
 ## Deploy en Vercel
 
-Importá el repo, cargá las mismas tres variables de entorno en
+Importá el repo, cargá las mismas dos variables de entorno en
 **Settings → Environment Variables**, y deployá. No hace falta configuración
 adicional: las migraciones corren una sola vez, del lado de Supabase.
 
@@ -72,7 +70,7 @@ src/lib/
   agenda.ts                 Layout de la grilla semanal
   sesion.ts                 Sesión del usuario + su centro
   reservas.ts                Envoltorio de las RPC públicas de /reservar
-  supabase/                 Clientes de Supabase (navegador, servidor, admin)
+  supabase/                 Clientes de Supabase (navegador, servidor)
 src/app/
   login/                     UC-01
   (panel)/                   Rutas protegidas (exigen sesión)
@@ -80,7 +78,7 @@ src/app/
     turnos/                     UC-03, UC-04, UC-06
     pacientes/                   UC-07, UC-08
     reportes/                     UC-12 (+ export CSV)
-    configuracion/                 UC-09, UC-10
+    configuracion/                 UC-09
   cambiar-clave/              Primer ingreso de una cuenta creada por el admin
 ```
 
@@ -93,22 +91,18 @@ confirmación, poco confiable en un proyecto de Supabase sin SMTP propio
 configurado (ver "Decisiones de diseño"). Toda cuenta creada así entra
 como **administrador** del centro, o sea que puede:
 
-- ver y cargar turnos en la agenda de cualquier profesional,
+- ver y cargar turnos en la agenda,
 - marcar realizado/ausente y cargar la observación clínica de cualquier turno,
-- dar de alta pacientes, kinesiólogos, sedes y horarios,
+- dar de alta pacientes, sedes y horarios,
 - tocar la configuración del centro y ver los reportes.
 
 Al registrarse quedan cargados los horarios de atención de lunes a viernes
-(9–13 y 15–19), editables en Configuración → Horarios. Las cuentas que crea
-un administrador desde Configuración → Profesionales siguen eligiendo rol
-(kinesiólogo/a o administrador) y entran con una clave temporal.
+(9–13 y 15–19), editables en Configuración → Horarios.
 
 **Cada cuenta que se registra arranca su propio centro**, aislado de los
 demás: no comparte pacientes, turnos, horarios ni configuración con otras
 cuentas. El aislamiento por `centro_id` lo hace Postgres vía RLS (ver
-"Aislamiento por centro" más abajo), no el código de la app. Para sumar
-gente al mismo centro, el administrador las da de alta desde Configuración
-→ Profesionales; eso sí las deja compartiendo la agenda.
+"Aislamiento por centro" más abajo), no el código de la app.
 
 ## Turnos online (reservas sin login)
 
@@ -195,10 +189,7 @@ siguen mostrándose, en gris).
   Supabase exige confirmar el email antes de dejar entrar a una cuenta
   nueva, y el mailer compartido que trae por defecto (sin SMTP propio
   configurado) tiene un límite muy bajo de envíos — el registro por email
-  quedaba roto la mayor parte del tiempo. El login por email/contraseña
-  sigue existiendo para las cuentas que invita el administrador desde
-  Configuración → Profesionales (`auth.admin.createUser` con
-  `email_confirm: true`, sin depender de ningún mail).
+  quedaba roto la mayor parte del tiempo.
 
 ## Fuera de alcance (a propósito)
 
