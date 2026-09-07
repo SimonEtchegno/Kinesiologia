@@ -159,7 +159,7 @@ export default async function PaginaReportes({
                 return (
                   <li key={valor} className="flex items-center gap-3 px-5 py-3">
                     <span className={'size-2.5 shrink-0 rounded-full ' + tipo.punto} />
-                    <span className="w-52 shrink-0 truncate text-sm font-medium text-slate-800">
+                    <span className="w-24 shrink-0 truncate text-sm font-medium text-slate-800 sm:w-52">
                       {tipo.etiqueta}
                     </span>
                     <span className="h-2.5 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-100">
@@ -182,6 +182,9 @@ export default async function PaginaReportes({
               <h2 className="font-semibold text-slate-900">Sesiones por profesional</h2>
               <p className="subtitulo">Turnos realizados en el período</p>
             </div>
+            <p className="border-b border-linea bg-slate-50/70 px-5 py-1.5 text-xs text-slate-400 sm:hidden dark:bg-slate-800/70 dark:text-slate-500">
+              Deslizá hacia el costado para ver toda la tabla →
+            </p>
             <div className="overflow-x-auto scroll-fino">
               <table className="tabla min-w-[34rem]">
                 <thead>
@@ -216,6 +219,9 @@ export default async function PaginaReportes({
               <h2 className="font-semibold text-slate-900">Sesiones por paciente</h2>
               <p className="subtitulo">Los 12 con más sesiones en el período</p>
             </div>
+            <p className="border-b border-linea bg-slate-50/70 px-5 py-1.5 text-xs text-slate-400 sm:hidden dark:bg-slate-800/70 dark:text-slate-500">
+              Deslizá hacia el costado para ver toda la tabla →
+            </p>
             <div className="overflow-x-auto scroll-fino">
               <table className="tabla min-w-[34rem]">
                 <thead>

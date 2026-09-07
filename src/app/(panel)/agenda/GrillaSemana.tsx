@@ -24,6 +24,9 @@ export default function GrillaSemana({
 
   return (
     <div className="tarjeta overflow-hidden">
+      <p className="border-b border-linea bg-slate-50/70 px-3 py-1.5 text-xs text-slate-400 sm:hidden dark:bg-slate-800/70 dark:text-slate-500">
+        Deslizá hacia el costado para ver el resto de la semana →
+      </p>
       <div className="overflow-x-auto scroll-fino">
         <div className="min-w-[52rem]">
           {/* Encabezado de días */}
