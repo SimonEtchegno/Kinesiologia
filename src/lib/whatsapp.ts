@@ -110,6 +110,15 @@ export function mensajeReprogramado(d: DatosMensaje): string {
   )
 }
 
+/** Aviso de que un turno ya cargado se canceló. */
+export function mensajeCancelado(d: DatosMensaje): string {
+  return (
+    '¡Hola ' + d.paciente + '! Te escribo de ' + d.centro + ' para avisarte que tu turno de ' +
+    cuando(d) + ' quedó cancelado.\n\n' +
+    'Si querés reprogramarlo, avisame y coordinamos otro horario. ¡Gracias!'
+  )
+}
+
 /** Para escribirle a un paciente desde su ficha, sin turno de por medio. */
 export function mensajeLibre(centro: string, paciente: string): string {
   return '¡Hola ' + paciente + '! Te escribo de ' + centro + '. '

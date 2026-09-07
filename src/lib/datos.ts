@@ -9,7 +9,7 @@ import type {
   TurnoExpandido,
 } from './dominio'
 import { ESTADOS_VIGENTES } from './dominio'
-import { desdeMinutos, diaSemana, grillaHoraria, minutos } from './fechas'
+import { desdeMinutos, diaSemana, grillaHoraria, minutos, yaPaso } from './fechas'
 import type { clienteServidor } from './supabase/servidor'
 
 export type Cliente = Awaited<ReturnType<typeof clienteServidor>>
@@ -304,6 +304,7 @@ export async function slotsDisponibles(
     for (const inicio of grillaHoraria(f.hora_inicio, f.hora_fin, duracionMin)) {
       const desde = minutos(inicio)
       const hasta = desde + duracionMin
+      if (yaPaso(fecha, inicio)) continue
       const solapados = tomados.filter((t) => desde < t.hasta && hasta > t.desde).length
       // Libre = queda lugar para al menos un Ingreso; el chequeo exacto por
       // tipo lo hace capacidadDisponible al confirmar.

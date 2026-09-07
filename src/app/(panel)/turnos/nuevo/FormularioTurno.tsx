@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useActionState, useCallback, useEffect, useState } from 'react'
+import { useActionState, useCallback, useEffect, useRef, useState } from 'react'
 import { IconoAlerta, IconoCheck, IconoReloj } from '@/componentes/Iconos'
 import BotonEnviar from '@/componentes/BotonEnviar'
 import EnviarWhatsApp from '@/componentes/EnviarWhatsApp'
@@ -95,6 +95,15 @@ export default function FormularioTurno({
   const [tipo, setTipo] = useState<string>(TIPO_SESION_POR_DEFECTO)
   const [tipoAMano, setTipoAMano] = useState(false)
   const [primeraVez, setPrimeraVez] = useState(false)
+
+  // El estado "pending" de la acción tarda un instante en reflejarse en el
+  // botón: un doble clic (o un toque repetido en el celular) puede disparar
+  // el envío dos veces antes de que se deshabilite. Esta ref bloquea el
+  // segundo envío al toque, sin esperar al re-render.
+  const enviandoRef = useRef(false)
+  useEffect(() => {
+    if (estado.error) enviandoRef.current = false
+  }, [estado.error])
 
   const tuvoTurnos = new Set(pacientesConTurnoPrevio)
 
@@ -386,7 +395,18 @@ export default function FormularioTurno({
       </section>
 
       <div className="flex flex-wrap items-center gap-3">
-        <BotonEnviar className="boton-primario" disabled={!hora} cargando="Guardando…">
+        <BotonEnviar
+          className="boton-primario"
+          disabled={!hora}
+          cargando="Guardando…"
+          onClick={(e) => {
+            if (enviandoRef.current) {
+              e.preventDefault()
+              return
+            }
+            enviandoRef.current = true
+          }}
+        >
           Confirmar turno
         </BotonEnviar>
         <Link href={'/agenda?fecha=' + fecha} className="boton-secundario">

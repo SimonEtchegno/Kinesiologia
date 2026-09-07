@@ -66,6 +66,7 @@ export async function crearTurno(_previo: Resultado, datos: FormData): Promise<R
   if (!profesionalId) return { error: 'Elegí el profesional que va a atender.' }
   if (!esISO(fecha)) return { error: 'La fecha no es válida.' }
   if (!esHora(horaInicio)) return { error: 'El horario no es válido.' }
+  if (yaPaso(fecha, horaInicio)) return { error: 'Ese horario ya pasó. Elegí uno más adelante.' }
   if (!Number.isFinite(duracion) || duracion < 10 || duracion > 240) {
     return { error: 'La duración tiene que estar entre 10 y 240 minutos.' }
   }
@@ -102,6 +103,21 @@ export async function crearTurno(_previo: Resultado, datos: FormData): Promise<R
 
   const horaFin = desdeMinutos(minutos(horaInicio) + duracion)
   if (minutos(horaFin) > 24 * 60) return { error: 'El turno no puede pasar de la medianoche.' }
+
+  // Un mismo paciente no puede tener dos turnos con el mismo profesional a la
+  // misma hora: si ya existe, es que este envío se disparó dos veces (doble
+  // clic, reintento de red) y no una carga nueva. Se devuelve el que ya
+  // existe en vez de crear un duplicado.
+  const { data: duplicado } = await supabase
+    .from('turnos')
+    .select('id')
+    .eq('profesional_id', profesionalId)
+    .eq('paciente_id', pacienteId)
+    .eq('fecha', fecha)
+    .eq('hora_inicio', horaInicio + ':00')
+    .neq('estado', 'cancelado')
+    .maybeSingle()
+  if (duplicado) return { ok: 'Turno creado.', id: duplicado.id }
 
   const enHorario = await estaEnHorarioDeAtencion(supabase, profesionalId, fecha, horaInicio, horaFin)
   if (!enHorario && !forzar) {
@@ -165,6 +181,7 @@ export async function reprogramarTurno(_previo: Resultado, datos: FormData): Pro
   const forzar = datos.get('forzar_fuera_de_horario') === 'si'
 
   if (!esISO(fecha) || !esHora(horaInicio)) return { error: 'Revisá la fecha y el horario.' }
+  if (yaPaso(fecha, horaInicio)) return { error: 'Ese horario ya pasó. Elegí uno más adelante.' }
 
   const turno = await turnoPorId(supabase, turnoId)
   if (!turno) return { error: 'No encontramos el turno.' }

@@ -5,7 +5,7 @@ import { IconoAlerta, IconoCheck, IconoReloj, IconoX } from '@/componentes/Icono
 import BotonEnviar from '@/componentes/BotonEnviar'
 import EnviarWhatsApp from '@/componentes/EnviarWhatsApp'
 import type { Franja } from '@/lib/datos'
-import { mensajeReprogramado } from '@/lib/whatsapp'
+import { mensajeCancelado, mensajeReprogramado } from '@/lib/whatsapp'
 import { cancelarTurno, reprogramarTurno } from '../acciones'
 
 /** Lo que hace falta para armar el mensaje de WhatsApp al reprogramar. */
@@ -68,9 +68,25 @@ export default function AccionesTurno({
 
   if (cancel.ok) {
     return (
-      <div className="aviso-ok" role="status">
-        <IconoCheck className="size-5 shrink-0" />
-        <span>{cancel.ok}</span>
+      <div className="space-y-3">
+        <div className="aviso-ok" role="status">
+          <IconoCheck className="size-5 shrink-0" />
+          <span>{cancel.ok}</span>
+        </div>
+        <EnviarWhatsApp
+          telefono={aviso.pacienteTelefono}
+          etiqueta="Avisar por WhatsApp"
+          autoAbrir={aviso.whatsappAutomatico}
+          mensaje={mensajeCancelado({
+            centro: aviso.centro,
+            paciente: aviso.paciente,
+            profesional: aviso.profesional,
+            fecha,
+            hora: horaActual,
+            sede: aviso.sede,
+            tipo: aviso.tipo,
+          })}
+        />
       </div>
     )
   }
