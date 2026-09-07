@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import AvisoAccion from '@/componentes/AvisoAccion'
 import BotonEnviar from '@/componentes/BotonEnviar'
 import { IconoMas } from '@/componentes/Iconos'
@@ -17,32 +17,41 @@ export default function FormHorario({
   sedes: Sede[]
 }) {
   const [estado, accion] = useActionState(agregarHorario, {})
+  const [dias, setDias] = useState<number[]>([1, 2, 3, 4, 5])
 
   // Lunes a sábado primero; el domingo al final, como se lee una agenda.
   const orden = [1, 2, 3, 4, 5, 6, 0]
 
+  function alternarDia(d: number) {
+    setDias((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]))
+  }
+
   return (
     <form action={accion}>
       <input type="hidden" name="profesional_id" value={profesionalId} />
+      {dias.map((d) => (
+        <input key={d} type="hidden" name="dias" value={d} />
+      ))}
       <AvisoAccion error={estado.error} ok={estado.ok} />
 
       <fieldset className="mb-5">
         <legend className="etiqueta">Días</legend>
         <div className="flex flex-wrap gap-2">
           {orden.map((d) => (
-            <label
+            <button
               key={d}
-              className="cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition-colors has-[:checked]:border-marca-600 has-[:checked]:bg-marca-50 has-[:checked]:text-marca-700 hover:bg-slate-50"
+              type="button"
+              onClick={() => alternarDia(d)}
+              aria-pressed={dias.includes(d)}
+              className={
+                'rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ' +
+                (dias.includes(d)
+                  ? 'border-marca-600 bg-marca-50 text-marca-700'
+                  : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50')
+              }
             >
-              <input
-                type="checkbox"
-                name="dias"
-                value={d}
-                defaultChecked={d >= 1 && d <= 5}
-                className="sr-only"
-              />
               {DIAS_CORTOS[d]}
-            </label>
+            </button>
           ))}
         </div>
       </fieldset>
