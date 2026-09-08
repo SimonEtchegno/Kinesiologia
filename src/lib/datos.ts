@@ -58,7 +58,7 @@ function expandir(fila: FilaTurno): TurnoExpandido {
 export async function listarProfesionales(supabase: Cliente, soloActivos = true) {
   let q = supabase
     .from('perfiles')
-    .select('id, centro_id, nombre, email, rol, especialidad, telefono, activo, debe_cambiar_password, acepta_reservas_online')
+    .select('id, centro_id, nombre, email, rol, especialidad, telefono, activo, debe_cambiar_password, acepta_reservas_online, duracion_turno_min')
     .order('nombre')
   if (soloActivos) q = q.eq('activo', true)
 

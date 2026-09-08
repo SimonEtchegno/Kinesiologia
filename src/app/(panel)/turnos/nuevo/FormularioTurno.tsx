@@ -177,8 +177,12 @@ export default function FormularioTurno({
     const p = new URLSearchParams({
       fecha: cambios.fecha ?? fecha,
       prof: cambios.prof ?? profesionalId,
-      duracion: cambios.duracion ?? String(duracion),
     })
+    // Al cambiar de profesional no se arrastra la duración: cada una tiene
+    // la suya y el servidor la resuelve. En cualquier otro caso se mantiene
+    // la que esté puesta en el campo.
+    const dur = cambios.duracion ?? (cambios.prof ? undefined : String(duracion))
+    if (dur) p.set('duracion', dur)
     // Si venimos desde la ficha de un paciente, no lo perdemos al recargar.
     if (pacienteInicial) p.set('paciente', pacienteInicial)
     setHora('')

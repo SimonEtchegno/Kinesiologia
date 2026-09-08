@@ -14,6 +14,8 @@ export interface ProfesionalPublico {
   id: string
   nombre: string
   especialidad: string | null
+  /** La suya, o la del centro si no definió una propia (0012). */
+  duracion_turno_min: number
 }
 
 export interface SedePublica {

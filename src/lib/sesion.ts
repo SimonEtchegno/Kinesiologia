@@ -50,7 +50,7 @@ export const obtenerSesion = cache(async (): Promise<Sesion | null> => {
     .from('perfiles')
     .select(
       'id, centro_id, nombre, email, rol, especialidad, telefono, activo, debe_cambiar_password, ' +
-        'acepta_reservas_online, ' +
+        'acepta_reservas_online, duracion_turno_min, ' +
         'centro:centros(id, nombre, kinesiologos_pueden_crear_turnos, duracion_turno_min, ' +
         'reservas_publicas, whatsapp_ingreso_automatico, telefono)',
     )
@@ -79,6 +79,7 @@ export const obtenerSesion = cache(async (): Promise<Sesion | null> => {
     activo: data.activo,
     debe_cambiar_password: data.debe_cambiar_password,
     acepta_reservas_online: data.acepta_reservas_online,
+    duracion_turno_min: data.duracion_turno_min,
   }
 
   const esAdmin = perfil.rol === 'admin'

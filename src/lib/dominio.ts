@@ -33,6 +33,8 @@ export interface Perfil {
   debe_cambiar_password: boolean
   /** Si su agenda se publica en la página de reservas online (0011). */
   acepta_reservas_online: boolean
+  /** Duración propia de sesión; en null usa la del centro (0012). */
+  duracion_turno_min: number | null
 }
 
 export interface Sede {

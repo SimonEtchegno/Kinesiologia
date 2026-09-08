@@ -8,6 +8,7 @@ import { IconoCheck, IconoLink, IconoWhatsApp } from '@/componentes/Iconos'
 import type { Centro, Perfil } from '@/lib/dominio'
 import {
   actualizarCentro,
+  actualizarMiDuracion,
   actualizarMisDatos,
   actualizarMisReservasOnline,
   actualizarReservas,
@@ -321,6 +322,49 @@ export function FormReservas({ centro }: { centro: Centro }) {
           </p>
         </div>
       )}
+    </form>
+  )
+}
+
+// ------------------------------------------------------------
+// Duración de mis sesiones
+//
+// Va aparte de la del centro (FormCentro, del admin), que queda como
+// valor por defecto para quien no ponga la suya (0012).
+// ------------------------------------------------------------
+export function FormMiDuracion({ perfil, centro }: { perfil: Perfil; centro: Centro }) {
+  const [estado, accion] = useActionState(actualizarMiDuracion, {})
+
+  return (
+    <form action={accion}>
+      <AvisoAccion error={estado.error} ok={estado.ok} />
+
+      <label htmlFor="mi_duracion" className="etiqueta">
+        Cuánto dura una sesión mía
+      </label>
+      <div className="flex items-center gap-2">
+        <input
+          id="mi_duracion"
+          name="duracion"
+          type="number"
+          min={10}
+          max={240}
+          step={5}
+          placeholder={String(centro.duracion_turno_min)}
+          defaultValue={perfil.duracion_turno_min ?? ''}
+          className="campo w-28"
+        />
+        <span className="text-sm text-slate-500">minutos</span>
+      </div>
+      <p className="ayuda">
+        Si lo dejás en blanco se usa la del centro ({centro.duracion_turno_min} minutos). Es
+        la grilla que se ofrece al cargarte un turno y en la reserva online; en cada turno
+        igual se puede ajustar a mano.
+      </p>
+
+      <BotonEnviar className="boton-primario mt-5" cargando="Guardando…">
+        Guardar
+      </BotonEnviar>
     </form>
   )
 }

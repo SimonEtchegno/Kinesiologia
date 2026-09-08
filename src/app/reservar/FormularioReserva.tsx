@@ -28,6 +28,11 @@ export default function FormularioReserva({
 }) {
   const hoy = hoyISO()
   const [profesionalId, setProfesionalId] = useState(profesionales[0]?.id ?? '')
+
+  // Cada profesional puede tener su propia duración de sesión (0012).
+  const duracion =
+    profesionales.find((p) => p.id === profesionalId)?.duracion_turno_min ??
+    centro.duracion_turno_min
   const [fecha, setFecha] = useState(hoy)
   const [sedeId, setSedeId] = useState(sedes[0]?.id ?? '')
   const [hora, setHora] = useState('')
@@ -214,7 +219,7 @@ export default function FormularioReserva({
       <section className="tarjeta p-5">
         <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="font-semibold text-slate-900">2. Elegí el horario</h2>
-          <p className="text-xs text-slate-500">Sesiones de {centro.duracion_turno_min} minutos</p>
+          <p className="text-xs text-slate-500">Sesiones de {duracion} minutos</p>
         </div>
 
         {libres.length === 0 ? (

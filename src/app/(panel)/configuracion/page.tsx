@@ -5,6 +5,7 @@ import { exigirSesion } from '@/lib/sesion'
 import {
   FormCentro,
   FormClave,
+  FormMiDuracion,
   FormMisDatos,
   FormMisReservas,
   FormReservas,
@@ -76,6 +77,14 @@ export default async function PaginaConfiguracion() {
             <FormCentro centro={sesion.centro} />
           </section>
         )}
+
+        <section className="tarjeta p-5">
+          <h2 className="mb-1 font-semibold text-slate-900">Mis sesiones</h2>
+          <p className="subtitulo mb-5">
+            Cuánto duran tus sesiones. Cada profesional puede tener la suya.
+          </p>
+          <FormMiDuracion perfil={sesion.perfil} centro={sesion.centro} />
+        </section>
 
         <section className="tarjeta p-5">
           <h2 className="mb-1 font-semibold text-slate-900">Mis turnos online</h2>

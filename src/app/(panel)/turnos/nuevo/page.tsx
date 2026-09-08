@@ -24,12 +24,6 @@ export default async function PaginaNuevoTurno({
   const fecha = esISO(sp.fecha) ? sp.fecha! : hoyISO()
   const supabase = await clienteServidor()
 
-  const duracionPedida = Number(sp.duracion)
-  const duracion =
-    Number.isFinite(duracionPedida) && duracionPedida >= 10 && duracionPedida <= 240
-      ? duracionPedida
-      : sesion.centro.duracion_turno_min
-
   const [profesionalesTodos, sedes, pacientes, conHistorial] = await Promise.all([
     listarProfesionales(supabase),
     listarSedes(supabase),
@@ -48,6 +42,16 @@ export default async function PaginaNuevoTurno({
   const profesionalId =
     pedido ??
     (profesionales.some((p) => p.id === sesion.perfil.id) ? sesion.perfil.id : profesionales[0]!.id)
+
+  // Por defecto, lo que dura una sesión de esa profesional; si no definió
+  // una propia, la del centro. El parámetro de la URL la pisa (el campo de
+  // duración del formulario).
+  const duracionPedida = Number(sp.duracion)
+  const duracion =
+    Number.isFinite(duracionPedida) && duracionPedida >= 10 && duracionPedida <= 240
+      ? duracionPedida
+      : (profesionales.find((p) => p.id === profesionalId)?.duracion_turno_min ??
+         sesion.centro.duracion_turno_min)
 
   const disponibilidad = await slotsDisponibles(supabase, profesionalId, fecha, duracion)
 

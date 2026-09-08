@@ -193,6 +193,43 @@ export async function actualizarCentro(_previo: Resultado, datos: FormData): Pro
 // falta las dos, así nadie queda expuesto sin haberlo elegido (0011).
 // ============================================================
 
+/**
+ * Duración de sesión propia. En blanco vuelve a usar la del centro. No
+ * requiere ser admin: es su propia agenda (0012).
+ */
+export async function actualizarMiDuracion(
+  _previo: Resultado,
+  datos: FormData,
+): Promise<Resultado> {
+  const sesion = await exigirSesion()
+  const crudo = String(datos.get('duracion') ?? '').trim()
+
+  let duracion: number | null = null
+  if (crudo !== '') {
+    const n = Number(crudo)
+    if (!Number.isInteger(n) || n < 10 || n > 240) {
+      return { error: 'La duración tiene que estar entre 10 y 240 minutos.' }
+    }
+    duracion = n
+  }
+
+  const supabase = await clienteServidor()
+  const { error } = await supabase
+    .from('perfiles')
+    .update({ duracion_turno_min: duracion })
+    .eq('id', sesion.perfil.id)
+
+  if (error) return { error: error.message }
+  revalidatePath('/', 'layout')
+  return {
+    ok:
+      duracion === null
+        ? 'Listo: vuelves a usar la duración del centro (' +
+          sesion.centro.duracion_turno_min + ' minutos).'
+        : 'Tus sesiones ahora duran ' + duracion + ' minutos.',
+  }
+}
+
 /** Cada profesional decide sobre su propia agenda: no requiere ser admin. */
 export async function actualizarMisReservasOnline(
   _previo: Resultado,
