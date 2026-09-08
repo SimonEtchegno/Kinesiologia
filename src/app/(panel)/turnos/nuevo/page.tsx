@@ -37,9 +37,10 @@ export default async function PaginaNuevoTurno({
     pacientesConTurnoPrevio(supabase),
   ])
 
-  const profesionales = sesion.esAdmin
-    ? profesionalesTodos
-    : profesionalesTodos.filter((p) => p.id === sesion.perfil.id)
+  // UC-03: cualquiera que pueda cargar turnos (admin o kinesiólogo
+  // habilitado) puede elegir a qué profesional del centro se lo carga, no
+  // solo a sí mismo — así se cubren la agenda entre kinesiólogos.
+  const profesionales = profesionalesTodos
 
   if (profesionales.length === 0) redirect('/agenda')
 
@@ -73,7 +74,7 @@ export default async function PaginaNuevoTurno({
         ocupados={disponibilidad.ocupados}
         atiende={disponibilidad.atiende}
         duracion={duracion}
-        puedeElegirProfesional={sesion.esAdmin && profesionales.length > 1}
+        puedeElegirProfesional={profesionales.length > 1}
         pacienteInicial={pacienteInicial}
       />
     </div>

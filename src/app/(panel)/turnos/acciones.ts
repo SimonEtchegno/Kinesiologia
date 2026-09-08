@@ -54,13 +54,11 @@ export async function crearTurno(_previo: Resultado, datos: FormData): Promise<R
 
   let pacienteId = String(datos.get('paciente_id') ?? '')
 
-  if (!sesion.esAdmin) {
-    if (!sesion.centro.kinesiologos_pueden_crear_turnos) {
-      return { error: 'En este centro los turnos los carga el administrador.' }
-    }
-    if (profesionalId !== sesion.perfil.id) {
-      return { error: 'Solo podés cargar turnos en tu propia agenda.' }
-    }
+  // UC-03: un kinesiólogo puede cargar turnos para cualquier profesional
+  // activo del centro, no solo para sí mismo (p. ej. dos kinesiólogas que
+  // se cubren la agenda una a la otra).
+  if (!sesion.esAdmin && !sesion.centro.kinesiologos_pueden_crear_turnos) {
+    return { error: 'En este centro los turnos los carga el administrador.' }
   }
 
   if (!profesionalId) return { error: 'Elegí el profesional que va a atender.' }
