@@ -2,7 +2,14 @@ import Link from 'next/link'
 import { IconoDerecha, IconoReloj, IconoSede } from '@/componentes/Iconos'
 import { Encabezado } from '@/componentes/ui'
 import { exigirSesion } from '@/lib/sesion'
-import { FormCentro, FormClave, FormMisDatos, FormReservas, FormWhatsapp } from './FormulariosConfig'
+import {
+  FormCentro,
+  FormClave,
+  FormMisDatos,
+  FormMisReservas,
+  FormReservas,
+  FormWhatsapp,
+} from './FormulariosConfig'
 import VaciarDatos from './VaciarDatos'
 
 export default async function PaginaConfiguracion() {
@@ -70,12 +77,21 @@ export default async function PaginaConfiguracion() {
           </section>
         )}
 
+        <section className="tarjeta p-5">
+          <h2 className="mb-1 font-semibold text-slate-900">Mis turnos online</h2>
+          <p className="subtitulo mb-5">
+            Elegí si querés que los pacientes puedan reservarte turnos solos desde la página
+            pública. Cada profesional lo decide para su propia agenda.
+          </p>
+          <FormMisReservas perfil={sesion.perfil} centro={sesion.centro} />
+        </section>
+
         {sesion.esAdmin && (
           <section className="tarjeta p-5">
-            <h2 className="mb-1 font-semibold text-slate-900">Turnos online</h2>
+            <h2 className="mb-1 font-semibold text-slate-900">Turnos online del centro</h2>
             <p className="subtitulo mb-5">
-              Elegí si los pacientes pueden sacar turno solos desde una página pública, o si
-              los turnos los cargás únicamente vos.
+              La llave general: si está cerrada, la página pública no funciona para nadie del
+              centro, sin importar lo que cada una haya elegido arriba.
             </p>
             <FormReservas centro={sesion.centro} />
           </section>

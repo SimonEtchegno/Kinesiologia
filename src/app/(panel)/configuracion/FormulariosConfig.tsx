@@ -9,6 +9,7 @@ import type { Centro, Perfil } from '@/lib/dominio'
 import {
   actualizarCentro,
   actualizarMisDatos,
+  actualizarMisReservasOnline,
   actualizarReservas,
   actualizarWhatsapp,
   cambiarClave,
@@ -320,6 +321,59 @@ export function FormReservas({ centro }: { centro: Centro }) {
           </p>
         </div>
       )}
+    </form>
+  )
+}
+
+// ------------------------------------------------------------
+// Mis reservas online
+//
+// Va aparte de la llave general del centro (FormReservas, del admin):
+// cada profesional decide si su propia agenda se publica. Hacen falta
+// las dos cosas para que un paciente pueda reservarle.
+// ------------------------------------------------------------
+export function FormMisReservas({
+  perfil,
+  centro,
+}: {
+  perfil: Perfil
+  centro: Centro
+}) {
+  const [estado, accion] = useActionState(actualizarMisReservasOnline, {})
+
+  return (
+    <form action={accion}>
+      <AvisoAccion error={estado.error} ok={estado.ok} />
+
+      <label className="flex items-start gap-3 rounded-lg border border-linea p-4 has-checked:border-marca-400 has-checked:bg-marca-50/50">
+        <input
+          type="checkbox"
+          name="acepta"
+          value="si"
+          defaultChecked={perfil.acepta_reservas_online}
+          className="mt-0.5 size-4 rounded border-slate-300"
+        />
+        <span>
+          <span className="block font-medium text-slate-800">
+            Aceptar reservas online en mi agenda
+          </span>
+          <span className="block text-sm text-slate-500">
+            Si está apagado, tu agenda no aparece en la página pública y nadie puede
+            reservarte turnos solo. Los que cargás vos (o una colega) no se ven afectados.
+          </span>
+        </span>
+      </label>
+
+      {!centro.reservas_publicas && (
+        <p className="ayuda">
+          Ojo: las reservas online del centro están apagadas, así que por ahora la página
+          pública está cerrada para todas.
+        </p>
+      )}
+
+      <BotonEnviar className="boton-primario mt-5" cargando="Guardando…">
+        Guardar
+      </BotonEnviar>
     </form>
   )
 }

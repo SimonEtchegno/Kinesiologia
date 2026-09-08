@@ -31,6 +31,8 @@ export interface Perfil {
   telefono: string | null
   activo: boolean
   debe_cambiar_password: boolean
+  /** Si su agenda se publica en la página de reservas online (0011). */
+  acepta_reservas_online: boolean
 }
 
 export interface Sede {

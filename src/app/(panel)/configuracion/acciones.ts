@@ -187,7 +187,36 @@ export async function actualizarCentro(_previo: Resultado, datos: FormData): Pro
 
 // ============================================================
 // Turnos online (página pública de reservas)
+//
+// Son dos niveles: la llave general del centro (abajo, del admin) y la
+// de cada profesional, que decide si su propia agenda se publica. Hacen
+// falta las dos, así nadie queda expuesto sin haberlo elegido (0011).
 // ============================================================
+
+/** Cada profesional decide sobre su propia agenda: no requiere ser admin. */
+export async function actualizarMisReservasOnline(
+  _previo: Resultado,
+  datos: FormData,
+): Promise<Resultado> {
+  const sesion = await exigirSesion()
+  const acepta = datos.get('acepta') === 'si'
+
+  const supabase = await clienteServidor()
+  const { error } = await supabase
+    .from('perfiles')
+    .update({ acepta_reservas_online: acepta })
+    .eq('id', sesion.perfil.id)
+
+  if (error) return { error: error.message }
+  revalidatePath('/', 'layout')
+
+  if (!acepta) return { ok: 'Tu agenda ya no aparece en la página de reservas online.' }
+  return {
+    ok: sesion.centro.reservas_publicas
+      ? 'Listo: los pacientes ya pueden reservarte turnos online.'
+      : 'Guardado. Falta que se prendan las reservas online del centro para que te aparezcan.',
+  }
+}
 export async function actualizarReservas(_previo: Resultado, datos: FormData): Promise<Resultado> {
   const sesion = await exigirAdmin()
   const activas = datos.get('reservas') === 'si'
