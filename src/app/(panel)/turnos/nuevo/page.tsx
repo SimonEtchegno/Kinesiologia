@@ -15,7 +15,7 @@ import FormularioTurno from './FormularioTurno'
 export default async function PaginaNuevoTurno({
   searchParams,
 }: {
-  searchParams: Promise<{ fecha?: string; prof?: string; paciente?: string }>
+  searchParams: Promise<{ fecha?: string; prof?: string; paciente?: string; duracion?: string }>
 }) {
   const sesion = await exigirSesion()
   if (!sesion.puedeCargarTurnos) redirect('/agenda')
@@ -23,6 +23,12 @@ export default async function PaginaNuevoTurno({
   const sp = await searchParams
   const fecha = esISO(sp.fecha) ? sp.fecha! : hoyISO()
   const supabase = await clienteServidor()
+
+  const duracionPedida = Number(sp.duracion)
+  const duracion =
+    Number.isFinite(duracionPedida) && duracionPedida >= 10 && duracionPedida <= 240
+      ? duracionPedida
+      : sesion.centro.duracion_turno_min
 
   const [profesionalesTodos, sedes, pacientes, conHistorial] = await Promise.all([
     listarProfesionales(supabase),
@@ -42,7 +48,6 @@ export default async function PaginaNuevoTurno({
     pedido ??
     (profesionales.some((p) => p.id === sesion.perfil.id) ? sesion.perfil.id : profesionales[0]!.id)
 
-  const duracion = sesion.centro.duracion_turno_min
   const disponibilidad = await slotsDisponibles(supabase, profesionalId, fecha, duracion)
 
   const pacienteParam = sp.paciente

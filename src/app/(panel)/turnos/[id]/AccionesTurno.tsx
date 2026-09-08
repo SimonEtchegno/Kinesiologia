@@ -1,11 +1,11 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import { IconoAlerta, IconoCheck, IconoReloj, IconoX } from '@/componentes/Iconos'
 import BotonEnviar from '@/componentes/BotonEnviar'
 import EnviarWhatsApp from '@/componentes/EnviarWhatsApp'
 import type { Franja } from '@/lib/datos'
-import { mensajeCancelado, mensajeReprogramado } from '@/lib/whatsapp'
+import { linkWhatsApp, mensajeCancelado, mensajeReprogramado } from '@/lib/whatsapp'
 import { cancelarTurno, reprogramarTurno } from '../acciones'
 
 /** Lo que hace falta para armar el mensaje de WhatsApp al reprogramar. */
@@ -41,6 +41,78 @@ export default function AccionesTurno({
   const [nuevaFecha, setNuevaFecha] = useState(fecha)
   const [nuevaHora, setNuevaHora] = useState('')
 
+  // Pestaña de WhatsApp abierta en el mismo clic que confirma el cambio:
+  // así el navegador la sigue considerando una acción directa del usuario
+  // y no la bloquea al recién saber el resultado del Server Action.
+  const ventanaRef = useRef<Window | null>(null)
+  const [waBloqueado, setWaBloqueado] = useState(false)
+  function prepararVentana() {
+    ventanaRef.current = aviso.whatsappAutomatico
+      ? window.open('about:blank', '_blank')
+      : null
+  }
+  useEffect(() => {
+    if ((repro.error || cancel.error) && ventanaRef.current) {
+      ventanaRef.current.close()
+      ventanaRef.current = null
+    }
+  }, [repro.error, cancel.error])
+
+  // Redirige (o abre) la pestaña ya preparada al mensaje real. Lo hace el
+  // mismo componente que la abrió: nunca se le pasa la ventana a un hijo
+  // para que la mute.
+  function abrirEnlaceAutomatico(enlace: string | null) {
+    if (!enlace) {
+      ventanaRef.current?.close()
+      ventanaRef.current = null
+      return
+    }
+    if (ventanaRef.current) {
+      ventanaRef.current.location.href = enlace
+    } else if (!window.open(enlace, '_blank')) {
+      setWaBloqueado(true)
+    }
+    ventanaRef.current = null
+  }
+
+  useEffect(() => {
+    if (!repro.ok || !aviso.whatsappAutomatico) return
+    abrirEnlaceAutomatico(
+      linkWhatsApp(
+        aviso.pacienteTelefono ?? '',
+        mensajeReprogramado({
+          centro: aviso.centro,
+          paciente: aviso.paciente,
+          profesional: aviso.profesional,
+          fecha: nuevaFecha,
+          hora: nuevaHora,
+          sede: aviso.sede,
+          tipo: aviso.tipo,
+        }),
+      ),
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repro.ok])
+
+  useEffect(() => {
+    if (!cancel.ok || !aviso.whatsappAutomatico) return
+    abrirEnlaceAutomatico(
+      linkWhatsApp(
+        aviso.pacienteTelefono ?? '',
+        mensajeCancelado({
+          centro: aviso.centro,
+          paciente: aviso.paciente,
+          profesional: aviso.profesional,
+          fecha,
+          hora: horaActual,
+          sede: aviso.sede,
+          tipo: aviso.tipo,
+        }),
+      ),
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cancel.ok])
+
   if (repro.ok) {
     return (
       <div className="space-y-3">
@@ -51,7 +123,8 @@ export default function AccionesTurno({
         <EnviarWhatsApp
           telefono={aviso.pacienteTelefono}
           etiqueta="Avisar por WhatsApp"
-          autoAbrir={aviso.whatsappAutomatico}
+          abiertoInicialmente={aviso.whatsappAutomatico}
+          bloqueadoInicial={waBloqueado}
           mensaje={mensajeReprogramado({
             centro: aviso.centro,
             paciente: aviso.paciente,
@@ -76,7 +149,8 @@ export default function AccionesTurno({
         <EnviarWhatsApp
           telefono={aviso.pacienteTelefono}
           etiqueta="Avisar por WhatsApp"
-          autoAbrir={aviso.whatsappAutomatico}
+          abiertoInicialmente={aviso.whatsappAutomatico}
+          bloqueadoInicial={waBloqueado}
           mensaje={mensajeCancelado({
             centro: aviso.centro,
             paciente: aviso.paciente,
@@ -197,7 +271,11 @@ export default function AccionesTurno({
           </p>
 
           <div className="mt-4 flex gap-2">
-            <BotonEnviar className="boton-primario boton-chico" cargando="Guardando…">
+            <BotonEnviar
+              className="boton-primario boton-chico"
+              cargando="Guardando…"
+              onClick={prepararVentana}
+            >
               Confirmar cambio
             </BotonEnviar>
             <button
@@ -238,7 +316,11 @@ export default function AccionesTurno({
           </p>
 
           <div className="mt-4 flex gap-2">
-            <BotonEnviar className="boton-peligro boton-chico" cargando="Cancelando…">
+            <BotonEnviar
+              className="boton-peligro boton-chico"
+              cargando="Cancelando…"
+              onClick={prepararVentana}
+            >
               Sí, cancelar
             </BotonEnviar>
             <button

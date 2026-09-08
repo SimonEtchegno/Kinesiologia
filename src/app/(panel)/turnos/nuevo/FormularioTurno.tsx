@@ -19,7 +19,7 @@ import {
   type Sede,
 } from '@/lib/dominio'
 import { hhmm } from '@/lib/fechas'
-import { mensajeSegunTipo } from '@/lib/whatsapp'
+import { linkWhatsApp, mensajeSegunTipo } from '@/lib/whatsapp'
 import { crearTurno } from '../acciones'
 
 interface TurnoCreado {
@@ -105,6 +105,49 @@ export default function FormularioTurno({
     if (estado.error) enviandoRef.current = false
   }, [estado.error])
 
+  // Pestaña de WhatsApp abierta en el mismo clic que confirma el turno:
+  // así el navegador la sigue considerando una acción directa del usuario
+  // y no la bloquea al recién saber el resultado del Server Action.
+  const ventanaRef = useRef<Window | null>(null)
+  const [waBloqueado, setWaBloqueado] = useState(false)
+  useEffect(() => {
+    if (estado.error && ventanaRef.current) {
+      ventanaRef.current.close()
+      ventanaRef.current = null
+    }
+  }, [estado.error])
+
+  // Al confirmarse el turno, redirige esa pestaña (o abre una si no había)
+  // al mensaje ya armado. Lo hace el mismo componente que la abrió: nunca
+  // se le pasa la ventana a un hijo para que la mute.
+  useEffect(() => {
+    if (!creado || !centro.whatsapp_ingreso_automatico) return
+    const enlace = linkWhatsApp(
+      creado.pacienteTelefono ?? '',
+      mensajeSegunTipo({
+        centro: centro.nombre,
+        paciente: creado.pacienteNombre.split(' ')[0] || creado.pacienteNombre,
+        profesional: creado.profesional,
+        fecha: creado.fecha,
+        hora: hhmm(creado.hora),
+        sede: creado.sede,
+        tipo: creado.tipo,
+      }),
+    )
+    if (!enlace) {
+      ventanaRef.current?.close()
+      ventanaRef.current = null
+      return
+    }
+    if (ventanaRef.current) {
+      ventanaRef.current.location.href = enlace
+    } else if (!window.open(enlace, '_blank')) {
+      setWaBloqueado(true)
+    }
+    ventanaRef.current = null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [creado])
+
   const tuvoTurnos = new Set(pacientesConTurnoPrevio)
 
   // Un paciente sin turnos previos arranca marcado como Ingreso; si el
@@ -123,16 +166,30 @@ export default function FormularioTurno({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pacienteInicial])
 
-  // Cambiar profesional o fecha recarga la grilla de horarios desde el servidor.
-  function recargar(cambios: { prof?: string; fecha?: string }) {
+  // Cambiar profesional, fecha o duración recarga la grilla de horarios desde
+  // el servidor: cambia el paso de la grilla y qué tan libre está cada hueco.
+  function recargar(cambios: { prof?: string; fecha?: string; duracion?: string }) {
     const p = new URLSearchParams({
       fecha: cambios.fecha ?? fecha,
       prof: cambios.prof ?? profesionalId,
+      duracion: cambios.duracion ?? String(duracion),
     })
     // Si venimos desde la ficha de un paciente, no lo perdemos al recargar.
     if (pacienteInicial) p.set('paciente', pacienteInicial)
     setHora('')
     router.replace('/turnos/nuevo?' + p.toString())
+  }
+
+  const [duracionTexto, setDuracionTexto] = useState(String(duracion))
+  useEffect(() => setDuracionTexto(String(duracion)), [duracion])
+
+  function aplicarDuracion() {
+    const n = Number(duracionTexto)
+    if (Number.isFinite(n) && n >= 10 && n <= 240 && n !== duracion) {
+      recargar({ duracion: String(n) })
+    } else {
+      setDuracionTexto(String(duracion))
+    }
   }
 
   if (creado) {
@@ -156,7 +213,8 @@ export default function FormularioTurno({
               telefono={creado.pacienteTelefono}
               variante="acento"
               etiqueta={esIngreso(creado.tipo) ? 'WhatsApp de bienvenida' : 'Avisar por WhatsApp'}
-              autoAbrir={centro.whatsapp_ingreso_automatico}
+              abiertoInicialmente={centro.whatsapp_ingreso_automatico}
+              bloqueadoInicial={waBloqueado}
               mensaje={mensajeSegunTipo({
                 centro: centro.nombre,
                 paciente: creado.pacienteNombre.split(' ')[0] || creado.pacienteNombre,
@@ -242,9 +300,23 @@ export default function FormularioTurno({
 
       {/* --- Horario --- */}
       <section className="tarjeta p-5">
-        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-semibold text-slate-900">Horario</h2>
-          <p className="text-xs text-slate-500">Sesiones de {duracion} minutos</p>
+          <label className="flex items-center gap-2 text-xs text-slate-500">
+            Sesión de
+            <input
+              type="number"
+              min={10}
+              max={240}
+              step={5}
+              value={duracionTexto}
+              onChange={(e) => setDuracionTexto(e.target.value)}
+              onBlur={aplicarDuracion}
+              className="campo w-16 py-1 text-center text-sm"
+              aria-label="Duración de la sesión en minutos"
+            />
+            minutos
+          </label>
         </div>
 
         {!atiende ? (
@@ -405,6 +477,9 @@ export default function FormularioTurno({
               return
             }
             enviandoRef.current = true
+            ventanaRef.current = centro.whatsapp_ingreso_automatico
+              ? window.open('about:blank', '_blank')
+              : null
           }}
         >
           Confirmar turno

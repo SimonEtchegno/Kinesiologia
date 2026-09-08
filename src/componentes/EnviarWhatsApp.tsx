@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { IconoAlerta, IconoWhatsApp } from '@/componentes/Iconos'
 import { linkWhatsApp } from '@/lib/whatsapp'
 
@@ -9,50 +9,39 @@ import { linkWhatsApp } from '@/lib/whatsapp'
  * número y el mensaje ya armados, editables antes de mandar. El envío lo
  * confirma la persona en WhatsApp (ver `src/lib/whatsapp.ts`).
  *
- * Con `autoAbrir` intenta abrir WhatsApp solo (se usa al cargar un ingreso);
- * si el navegador bloquea la ventana, queda el botón a mano.
+ * `abiertoInicialmente`/`bloqueadoInicial` los usa quien llama cuando ya
+ * intentó abrir la pestaña por su cuenta (ver los flujos de crear,
+ * reprogramar o cancelar un turno): ese intento tiene que hacerlo el mismo
+ * componente que abrió la pestaña en blanco en el clic original, así que acá
+ * solo se refleja el resultado, no se repite el intento.
  */
 export default function EnviarWhatsApp({
   telefono,
   mensaje,
   etiqueta = 'WhatsApp',
   variante = 'acento',
-  autoAbrir = false,
+  abiertoInicialmente = false,
+  bloqueadoInicial = false,
 }: {
   telefono: string | null
   mensaje: string
   etiqueta?: string
   variante?: 'primario' | 'secundario' | 'fantasma' | 'acento'
-  autoAbrir?: boolean
+  abiertoInicialmente?: boolean
+  bloqueadoInicial?: boolean
 }) {
-  const [abierto, setAbierto] = useState(false)
+  const [abierto, setAbierto] = useState(abiertoInicialmente)
   const [numero, setNumero] = useState(telefono ?? '')
   const [texto, setTexto] = useState(mensaje)
-  const [bloqueado, setBloqueado] = useState(false)
-  const yaIntento = useRef(false)
+  const [bloqueado, setBloqueado] = useState(bloqueadoInicial)
 
   const link = linkWhatsApp(numero, texto)
 
   function abrirWhatsApp() {
     if (!link) return
-    const ventana = window.open(link, '_blank', 'noopener,noreferrer')
+    const ventana = window.open(link, '_blank')
     if (!ventana) setBloqueado(true)
   }
-
-  useEffect(() => {
-    if (!autoAbrir || yaIntento.current) return
-    yaIntento.current = true
-    setAbierto(true)
-    const enlace = linkWhatsApp(telefono ?? '', mensaje)
-    if (!enlace) return
-    // Se abre en un timeout: sacarlo del cuerpo del efecto evita el
-    // set-state síncrono si el navegador bloquea la ventana emergente.
-    const manija = setTimeout(() => {
-      const ventana = window.open(enlace, '_blank', 'noopener,noreferrer')
-      if (!ventana) setBloqueado(true)
-    }, 0)
-    return () => clearTimeout(manija)
-  }, [autoAbrir, telefono, mensaje])
 
   if (!abierto) {
     return (
