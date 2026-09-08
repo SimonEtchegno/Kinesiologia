@@ -7,9 +7,20 @@ import { clienteServidor } from './supabase/servidor'
 export interface Sesion {
   perfil: Perfil
   centro: Centro
+  /**
+   * Autoridad de CONFIGURACIÓN: centro, sedes, horarios, reservas online,
+   * WhatsApp. No da visibilidad sobre los datos de otro profesional.
+   */
   esAdmin: boolean
   /** UC-03: si es kinesiólogo, ¿el centro lo habilita a cargar turnos? */
   puedeCargarTurnos: boolean
+  /**
+   * ¿Ve la agenda y las fichas de todo el centro? Hoy: nadie. Va separado
+   * de `esAdmin` a propósito — en un centro compartido las dueñas son las
+   * dos admin y no se ven los datos entre ellas. La fuente de verdad es
+   * RLS (0009): esto solo evita ofrecer en la UI algo que va a volver vacío.
+   */
+  veTodosLosTurnos: boolean
 }
 
 /**
@@ -75,6 +86,7 @@ export const obtenerSesion = cache(async (): Promise<Sesion | null> => {
     centro,
     esAdmin,
     puedeCargarTurnos: esAdmin || centro.kinesiologos_pueden_crear_turnos,
+    veTodosLosTurnos: false,
   }
 })
 

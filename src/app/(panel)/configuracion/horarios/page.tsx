@@ -72,6 +72,18 @@ export default async function PaginaHorarios({
       )}
 
       <div className="space-y-5">
+        {profesionalId !== sesion.perfil.id && (
+          <div className="aviso-info" role="status">
+            <IconoReloj className="size-5 shrink-0" />
+            <div>
+              <p className="font-semibold">Estás editando los horarios de {deQuien}.</p>
+              <p className="mt-1">
+                Lo que agregues o borres acá le cambia la agenda a ella, no a vos.
+              </p>
+            </div>
+          </div>
+        )}
+
         <section className="tarjeta p-5">
           <h2 className="mb-4 font-semibold text-slate-900">Agregar una franja</h2>
           <FormHorario profesionalId={profesionalId} sedes={sedes} />

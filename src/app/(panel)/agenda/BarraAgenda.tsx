@@ -22,7 +22,8 @@ interface Props {
   sede: string
   profesionales: Perfil[]
   sedes: Sede[]
-  esAdmin: boolean
+  /** Solo quien ve todo el centro puede filtrar por profesional. */
+  puedeElegirProfesional: boolean
   puedeCargarTurnos: boolean
 }
 
@@ -33,7 +34,7 @@ export default function BarraAgenda({
   sede,
   profesionales,
   sedes,
-  esAdmin,
+  puedeElegirProfesional,
   puedeCargarTurnos,
 }: Props) {
   const router = useRouter()
@@ -141,9 +142,9 @@ export default function BarraAgenda({
       </div>
 
       {/* Barra de Filtros secundarios: Profesional y Sede */}
-      {(esAdmin || sedes.length > 1) && (
+      {(puedeElegirProfesional || sedes.length > 1) && (
         <div className="mt-3.5 flex flex-wrap items-center gap-3 border-t border-linea/80 pt-3">
-          {esAdmin && (
+          {puedeElegirProfesional && (
             <div className="flex items-center gap-2">
               <span className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
                 <IconoPacientes className="size-3.5 text-slate-400" />

@@ -92,16 +92,14 @@ export default async function PaginaConfiguracion() {
           </section>
         )}
 
-        {sesion.esAdmin && (
-          <section className="tarjeta p-5">
-            <h2 className="mb-1 font-semibold text-slate-900">Vaciar pacientes y turnos</h2>
-            <p className="subtitulo mb-5">
-              Borra todos los pacientes, turnos y observaciones del centro para empezar de
-              cero. Las cuentas y los horarios de atención quedan como están.
-            </p>
-            <VaciarDatos />
-          </section>
-        )}
+        <section className="tarjeta p-5">
+          <h2 className="mb-1 font-semibold text-slate-900">Vaciar mis pacientes y turnos</h2>
+          <p className="subtitulo mb-5">
+            Borra <strong>tus</strong> pacientes, turnos y observaciones para empezar de cero.
+            No toca los de las demás profesionales, ni las cuentas, ni los horarios de atención.
+          </p>
+          <VaciarDatos />
+        </section>
       </div>
     </div>
   )

@@ -11,13 +11,19 @@ import { hhmm } from '@/lib/fechas'
 export default function ChipTurno({
   turno,
   mostrarProfesional,
+  miId,
 }: {
   turno: TurnoExpandido
   mostrarProfesional?: boolean
+  /** Para marcar los turnos que aparecen pero atiende otra profesional. */
+  miId?: string
 }) {
   const tipo = tipoSesionDe(turno.tipo_sesion)
   const estado = ESTADOS[turno.estado]
   const cancelado = turno.estado === 'cancelado'
+  // Aparece en mi agenda pero lo atiende otra: lo cargué yo para ella.
+  const paraOtra = !!miId && turno.profesional_id !== miId
+  const nombreProf = turno.profesional?.nombre
 
   const detalle =
     hhmm(turno.hora_inicio) +
@@ -28,7 +34,8 @@ export default function ChipTurno({
     ' · ' +
     tipo.etiqueta +
     ' · ' +
-    estado.etiqueta
+    estado.etiqueta +
+    (paraOtra && nombreProf ? ' · para ' + nombreProf : '')
 
   return (
     <div className="group/turno relative h-full">
@@ -52,8 +59,9 @@ export default function ChipTurno({
           {nombreCompleto(turno.paciente)}
         </span>
         <span className="truncate opacity-75">
-          {tipo.corto}
-          {mostrarProfesional && turno.profesional ? ' · ' + turno.profesional.nombre : ''}
+          {paraOtra && nombreProf
+            ? 'Para ' + nombreProf
+            : tipo.corto + (mostrarProfesional && nombreProf ? ' · ' + nombreProf : '')}
         </span>
       </Link>
 
@@ -65,9 +73,12 @@ export default function ChipTurno({
         className="pointer-events-none absolute top-full left-1/2 z-20 mt-1.5 w-max max-w-[16rem] -translate-x-1/2 rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity delay-150 group-hover/turno:opacity-100"
       >
         <p className="font-semibold whitespace-nowrap">{nombreCompleto(turno.paciente)}</p>
+        {paraOtra && nombreProf && (
+          <p className="font-semibold text-amber-300">Lo atiende {nombreProf}</p>
+        )}
         <p className="text-slate-300">
           {hhmm(turno.hora_inicio)}–{hhmm(turno.hora_fin)} · {tipo.etiqueta} · {estado.etiqueta}
-          {mostrarProfesional && turno.profesional ? ' · ' + turno.profesional.nombre : ''}
+          {!paraOtra && mostrarProfesional && nombreProf ? ' · ' + nombreProf : ''}
         </p>
         <span className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-slate-900" />
       </div>

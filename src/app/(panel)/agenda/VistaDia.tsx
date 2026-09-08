@@ -44,7 +44,6 @@ export default function VistaDia({
   fecha,
 }: Props) {
   const usuarioId = sesion.perfil.id
-  const esAdmin = sesion.esAdmin
   const puedeCargarTurnos = sesion.puedeCargarTurnos
 
   if (turnos.length === 0) {
@@ -72,11 +71,13 @@ export default function VistaDia({
   return (
     <ul className="space-y-3">
       {turnos.map((t) => {
+        // Un turno que aparece pero atiende otra es uno que cargué yo para
+        // ella: se puede ver y corregir, pero el registro clínico (marcar
+        // realizado/ausente, cargar la nota) es solo de quien atiende.
         const propio = t.profesional_id === usuarioId
+        const paraOtra = !propio
         const puedeMarcar =
-          (propio || esAdmin) &&
-          t.estado !== 'cancelado' &&
-          yaPaso(t.fecha, hhmm(t.hora_inicio))
+          propio && t.estado !== 'cancelado' && yaPaso(t.fecha, hhmm(t.hora_inicio))
 
         const tipo = tipoSesionDe(t.tipo_sesion)
 
@@ -153,9 +154,15 @@ export default function VistaDia({
               </div>
 
               {/* Metadatos: Profesional y Sede */}
-              {(mostrarProfesional || t.sede) && (
+              {paraOtra && t.profesional && (
+                <p className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-inset ring-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-800/60">
+                  Para {t.profesional.nombre}
+                </p>
+              )}
+
+              {((mostrarProfesional && !paraOtra) || t.sede) && (
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-3 text-xs text-slate-400 dark:text-slate-500">
-                  {mostrarProfesional && t.profesional && (
+                  {mostrarProfesional && !paraOtra && t.profesional && (
                     <span className="inline-flex items-center gap-1 font-medium text-slate-600 dark:text-slate-300">
                       Kgo. {t.profesional.nombre}
                     </span>
@@ -205,7 +212,7 @@ export default function VistaDia({
                 </form>
               )}
 
-              {t.estado === 'realizado' && (propio || esAdmin) && (
+              {t.estado === 'realizado' && propio && (
                 <Link
                   href={'/turnos/' + t.id + '#observacion'}
                   className={

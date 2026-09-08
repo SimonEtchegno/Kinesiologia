@@ -5,7 +5,7 @@ import { Encabezado, Metrica, Vacio } from '@/componentes/ui'
 import { nombreCompleto, tipoSesionDe, type TurnoExpandido } from '@/lib/dominio'
 import { turnosEnRango } from '@/lib/datos'
 import { aISO, esISO, formatearFechaCorta, hoyISO } from '@/lib/fechas'
-import { exigirAdmin } from '@/lib/sesion'
+import { exigirSesion } from '@/lib/sesion'
 import { clienteServidor } from '@/lib/supabase/servidor'
 
 export const metadata: Metadata = {
@@ -37,7 +37,9 @@ export default async function PaginaReportes({
 }: {
   searchParams: Promise<Parametros>
 }) {
-  await exigirAdmin()
+  // Ya no es una vista del centro: con la visibilidad por profesional (0009)
+  // cada una ve sus propios números, así que no hace falta ser admin.
+  await exigirSesion()
   const sp = await searchParams
 
   const hoy = hoyISO()
@@ -104,8 +106,10 @@ export default async function PaginaReportes({
   return (
     <>
       <Encabezado
-        titulo="Reportes"
-        descripcion={'Del ' + formatearFechaCorta(desde) + ' al ' + formatearFechaCorta(hasta)}
+        titulo="Mis reportes"
+        descripcion={
+          'Tus turnos del ' + formatearFechaCorta(desde) + ' al ' + formatearFechaCorta(hasta)
+        }
         acciones={
           <a
             href={'/reportes/csv?desde=' + desde + '&hasta=' + hasta}

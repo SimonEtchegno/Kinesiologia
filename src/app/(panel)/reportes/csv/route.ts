@@ -17,7 +17,6 @@ function celda(valor: string | number | null): string {
 export async function GET(request: Request) {
   const sesion = await obtenerSesion()
   if (!sesion) return new Response('No autorizado', { status: 401 })
-  if (!sesion.esAdmin) return new Response('Solo el administrador puede exportar', { status: 403 })
 
   const url = new URL(request.url)
   const desdeCrudo = url.searchParams.get('desde')
@@ -67,7 +66,7 @@ export async function GET(request: Request) {
   )
 
   const cuerpo = '﻿' + [encabezado.join(';'), ...filas].join('\r\n') + '\r\n'
-  const nombre = 'kinesio-turnos-' + desde + '-a-' + hasta + '.csv'
+  const nombre = 'kinesio-mis-turnos-' + desde + '-a-' + hasta + '.csv'
 
   return new Response(cuerpo, {
     headers: {

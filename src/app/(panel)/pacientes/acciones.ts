@@ -103,16 +103,23 @@ export async function actualizarPaciente(_previo: Resultado, datos: FormData): P
   const campos = leer(datos)
   if (typeof campos === 'string') return { error: campos }
 
-  const { error } = await supabase
+  // Con .select() para distinguir "no se pudo" de "no era tuyo": si la
+  // ficha es de otra profesional, RLS hace que el update no afecte ninguna
+  // fila y sin esto informaríamos "Cambios guardados" sin haber guardado.
+  const { data, error } = await supabase
     .from('pacientes')
     .update(campos)
     .eq('id', id)
+    .select('id')
 
   if (error) {
     if (error.code === '23505') {
       return { error: 'Ya existe un paciente con ese DNI en este centro.' }
     }
     return { error: error.message }
+  }
+  if (!data || data.length === 0) {
+    return { error: 'No encontramos ese paciente entre los tuyos.' }
   }
 
   revalidatePath('/pacientes')

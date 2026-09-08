@@ -86,7 +86,11 @@ export default async function PaginaTurno({ params }: { params: Promise<{ id: st
     )
   }
 
-  const puedeEditar = turno.profesional_id === sesion.perfil.id || sesion.esAdmin
+  // Lo atiendo yo, o lo cargué yo para una colega (y entonces lo puedo
+  // corregir, pero no marcarlo ni escribirle la nota clínica).
+  const atiendo = turno.profesional_id === sesion.perfil.id
+  const paraOtra = !atiendo
+  const puedeCorregir = atiendo || turno.created_by === sesion.perfil.id
   const abierto = !ESTADOS_CERRADOS.includes(turno.estado)
   const llego = yaPaso(turno.fecha, hhmm(turno.hora_inicio))
   const duracion = minutos(turno.hora_fin) - minutos(turno.hora_inicio)
@@ -96,7 +100,7 @@ export default async function PaginaTurno({ params }: { params: Promise<{ id: st
     observacionDeTurno(supabase, turnoId),
     eventosDeTurno(supabase, turnoId),
     listarProfesionales(supabase, false),
-    abierto && puedeEditar
+    abierto && puedeCorregir
       ? slotsDisponibles(supabase, turno.profesional_id, turno.fecha, duracion, turno.id).then((d) => d.libres)
       : Promise.resolve([]),
   ])
@@ -138,6 +142,22 @@ export default async function PaginaTurno({ params }: { params: Promise<{ id: st
       />
 
       <div className="space-y-5">
+        {paraOtra && (
+          <div className="aviso-info" role="status">
+            <IconoPacientes className="size-5 shrink-0" />
+            <div>
+              <p className="font-semibold">
+                Este turno lo atiende {turno.profesional?.nombre ?? 'otra profesional'}
+                {turno.created_by === sesion.perfil.id ? ' — lo cargaste vos' : ''}.
+              </p>
+              <p className="mt-1">
+                Podés corregirlo o cancelarlo, pero marcarlo como realizado y cargar la
+                observación clínica le corresponden a ella.
+              </p>
+            </div>
+          </div>
+        )}
+
         <section className="tarjeta p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="font-semibold text-slate-900">El turno</h2>
@@ -152,7 +172,7 @@ export default async function PaginaTurno({ params }: { params: Promise<{ id: st
                   <span className={'size-1.5 rounded-full ' + tipo.punto} />
                   {tipo.etiqueta}
                 </span>
-                {puedeEditar && turno.estado !== 'cancelado' && (
+                {puedeCorregir && turno.estado !== 'cancelado' && (
                   <CambiarTipo turnoId={turno.id} tipoActual={turno.tipo_sesion} />
                 )}
               </div>
@@ -178,7 +198,7 @@ export default async function PaginaTurno({ params }: { params: Promise<{ id: st
           </dl>
         </section>
 
-        {puedeEditar && turno.estado !== 'cancelado' && (
+        {atiendo && turno.estado !== 'cancelado' && (
           <section className="tarjeta p-5">
             <h2 className="mb-1 font-semibold text-slate-900">¿Cómo salió la sesión?</h2>
             <p className="subtitulo mb-4">
@@ -217,7 +237,7 @@ export default async function PaginaTurno({ params }: { params: Promise<{ id: st
           </section>
         )}
 
-        {puedeEditar && abierto && (
+        {puedeCorregir && abierto && (
           <section className="tarjeta p-5">
             <h2 className="mb-4 flex items-center gap-2 font-semibold text-slate-900">
               <IconoReloj className="size-5 text-slate-400" />
@@ -241,11 +261,11 @@ export default async function PaginaTurno({ params }: { params: Promise<{ id: st
           </section>
         )}
 
-        {turno.estado === 'realizado' && puedeEditar && (
+        {turno.estado === 'realizado' && atiendo && (
           <FormObservacion turnoId={turno.id} observacion={observacion} />
         )}
 
-        {turno.estado === 'realizado' && !puedeEditar && observacion && (
+        {turno.estado === 'realizado' && !atiendo && observacion && (
           <section className="tarjeta p-5">
             <h2 className="mb-4 flex items-center gap-2 font-semibold text-slate-900">
               <IconoNota className="size-5 text-marca-600" />

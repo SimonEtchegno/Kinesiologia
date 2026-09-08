@@ -32,11 +32,15 @@ export default async function PaginaAgenda({
   const hoy = hoyISO()
   const fecha = esISO(sp.fecha) ? sp.fecha : hoy
   const vista: Vista = sp.vista === 'semana' ? 'semana' : 'dia'
-  // Un kinesiólogo ve solo su propia agenda: el filtro por profesional es
-  // del administrador (UC-11).
-  const prof = sesion.esAdmin ? (sp.prof ?? 'todos') : sesion.perfil.id
+  // Cada profesional ve solo su propia agenda. No depende de ser admin
+  // (admin es autoridad de configuración): con la visibilidad por
+  // profesional de 0009, pedir la de otra vuelve vacía de todos modos.
+  // Ojo: no se filtra por profesional. RLS ya acota lo legible a "mis
+  // turnos + los que cargué para una colega", y filtrar por profesional
+  // escondería justamente esos últimos, que son los que puede corregir.
+  const prof = sesion.veTodosLosTurnos ? (sp.prof ?? 'todos') : 'mios'
   const sede = sp.sede ?? ''
-  const profesionalId = prof === 'todos' ? undefined : prof
+  const profesionalId = prof === 'todos' || prof === 'mios' ? undefined : prof
 
   const dias = vista === 'semana' ? semanaDe(fecha) : [fecha]
   const primerDia = dias[0]!
@@ -62,7 +66,10 @@ export default async function PaginaAgenda({
     : horarios
   const ventana = ventanaHoraria(horariosVisibles, turnos)
 
-  const mostrarProfesional = !profesionalId && profesionales.length > 1
+  // En la vista "todos" (solo para quien ve todo el centro) cada turno
+  // lleva el nombre del profesional. En la vista propia no hace falta:
+  // los turnos ajenos que aparecen se marcan solos con "Para X".
+  const mostrarProfesional = prof === 'todos' && profesionales.length > 1
   const nombreProf =
     profesionalId && profesionalId !== sesion.perfil.id
       ? profesionales.find((p) => p.id === profesionalId)?.nombre
@@ -90,7 +97,7 @@ export default async function PaginaAgenda({
         sede={sede}
         profesionales={profesionales}
         sedes={sedes}
-        esAdmin={sesion.esAdmin}
+        puedeElegirProfesional={sesion.veTodosLosTurnos}
         puedeCargarTurnos={sesion.puedeCargarTurnos}
       />
 
@@ -129,6 +136,7 @@ export default async function PaginaAgenda({
           ventana={ventana}
           hoy={hoy}
           mostrarProfesional={mostrarProfesional}
+          miId={sesion.perfil.id}
         />
       ) : (
         <VistaDia

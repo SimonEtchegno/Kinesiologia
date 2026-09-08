@@ -76,6 +76,7 @@ export default async function PaginaNuevoTurno({
         duracion={duracion}
         puedeElegirProfesional={profesionales.length > 1}
         pacienteInicial={pacienteInicial}
+        miId={sesion.perfil.id}
       />
     </div>
   )

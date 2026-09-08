@@ -30,7 +30,7 @@ interface Props {
 const ITEMS = [
   { href: '/agenda', etiqueta: 'Agenda', Icono: IconoAgenda, soloAdmin: false },
   { href: '/pacientes', etiqueta: 'Pacientes', Icono: IconoPacientes, soloAdmin: false },
-  { href: '/reportes', etiqueta: 'Reportes', Icono: IconoReportes, soloAdmin: true },
+  { href: '/reportes', etiqueta: 'Reportes', Icono: IconoReportes, soloAdmin: false },
   { href: '/configuracion', etiqueta: 'Configuración', Icono: IconoConfig, soloAdmin: false },
 ]
 

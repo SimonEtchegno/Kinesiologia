@@ -70,6 +70,8 @@ export interface Turno {
   estado: EstadoTurno
   motivo: string | null
   origen: OrigenTurno
+  /** Quién lo cargó. Puede corregirlo aunque lo atienda otra (ver 0009). */
+  created_by: string | null
   created_at: string
 }
 

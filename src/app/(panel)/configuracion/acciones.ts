@@ -56,9 +56,21 @@ export async function agregarHorario(_previo: Resultado, datos: FormData): Promi
 }
 
 export async function borrarHorario(datos: FormData): Promise<void> {
+  const sesion = await exigirSesion()
   const id = String(datos.get('id') ?? '')
   if (!id) return
   const supabase = await clienteServidor()
+
+  // Sin este chequeo se podía borrar la franja de cualquiera pasando su id;
+  // lo único que lo frenaba era RLS, que al admin igual se lo permite.
+  const { data: horario } = await supabase
+    .from('horarios_atencion')
+    .select('profesional_id')
+    .eq('id', id)
+    .maybeSingle()
+  if (!horario) return
+  if (horario.profesional_id !== sesion.perfil.id && !sesion.esAdmin) return
+
   await supabase.from('horarios_atencion').delete().eq('id', id)
   revalidatePath('/configuracion/horarios')
 }
@@ -218,12 +230,16 @@ export async function actualizarWhatsapp(_previo: Resultado, datos: FormData): P
 }
 
 // ============================================================
-// Vaciar pacientes y turnos (empezar de cero)
+// Vaciar mis pacientes y turnos (empezar de cero)
+//
+// Antes borraba los datos clínicos de TODO el centro pidiendo solo ser
+// admin: en un centro compartido, cualquiera de las dueñas podía borrar
+// el historial de la otra sin siquiera poder verlo (ver 0009).
 // ============================================================
 export async function vaciarDatosClinicos(): Promise<void> {
-  const sesion = await exigirAdmin()
+  await exigirSesion()
   const supabase = await clienteServidor()
-  const { error } = await supabase.rpc('vaciar_datos_clinicos', { p_centro_id: sesion.centro.id })
+  const { error } = await supabase.rpc('vaciar_mis_datos_clinicos')
   if (error) throw new Error(error.message)
 
   revalidatePath('/', 'layout')

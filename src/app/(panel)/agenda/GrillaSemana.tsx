@@ -9,6 +9,7 @@ interface Props {
   ventana: { desde: number; hasta: number }
   hoy: string
   mostrarProfesional: boolean
+  miId?: string
 }
 
 export default function GrillaSemana({
@@ -17,6 +18,7 @@ export default function GrillaSemana({
   ventana,
   hoy,
   mostrarProfesional,
+  miId,
 }: Props) {
   const alto = (ventana.hasta - ventana.desde) * PX_POR_MIN
   const horas: number[] = []
@@ -101,7 +103,11 @@ export default function GrillaSemana({
                           width: ancho + '%',
                         }}
                       >
-                        <ChipTurno turno={turno} mostrarProfesional={mostrarProfesional} />
+                        <ChipTurno
+                          turno={turno}
+                          mostrarProfesional={mostrarProfesional}
+                          miId={miId}
+                        />
                       </div>
                     )
                   })}

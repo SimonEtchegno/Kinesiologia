@@ -24,6 +24,7 @@ import { crearTurno } from '../acciones'
 
 interface TurnoCreado {
   id: string
+  profesionalId: string
   tipo: string
   fecha: string
   hora: string
@@ -48,6 +49,8 @@ interface Props {
   duracion: number
   puedeElegirProfesional: boolean
   pacienteInicial?: string
+  /** Perfil de quien está cargando, para avisar si el turno es de otra. */
+  miId: string
 }
 
 export default function FormularioTurno({
@@ -64,6 +67,7 @@ export default function FormularioTurno({
   duracion,
   puedeElegirProfesional,
   pacienteInicial,
+  miId,
 }: Props) {
   const router = useRouter()
   const [creado, setCreado] = useState<TurnoCreado | null>(null)
@@ -75,6 +79,7 @@ export default function FormularioTurno({
       const existente = pacientes.find((p) => p.id === pacienteId)
       setCreado({
         id: r.id,
+        profesionalId: String(fd.get('profesional_id') ?? ''),
         tipo: String(fd.get('tipo_sesion') ?? ''),
         fecha: String(fd.get('fecha') ?? fecha),
         hora: String(fd.get('hora_inicio') ?? ''),
@@ -207,6 +212,12 @@ export default function FormularioTurno({
             {hhmm(creado.hora)} con {creado.profesional}
             {creado.sede ? ' · ' + creado.sede : ''}
           </p>
+
+          {creado.profesionalId !== miId && (
+            <p className="mt-3 inline-flex items-center gap-1 rounded-md bg-amber-50 px-2.5 py-1 text-sm font-semibold text-amber-800 ring-1 ring-inset ring-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-800/60">
+              Quedó en la agenda de {creado.profesional}
+            </p>
+          )}
 
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <EnviarWhatsApp

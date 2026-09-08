@@ -25,11 +25,11 @@ export default function VaciarDatos() {
         <div className="flex items-start gap-3">
           <IconoAlerta className="size-5 shrink-0 text-rose-600" />
           <div>
-            <p className="font-semibold text-rose-900">¿Borrar todos los pacientes y turnos?</p>
+            <p className="font-semibold text-rose-900">¿Borrar tus pacientes y turnos?</p>
             <p className="mt-1 text-sm text-rose-800">
-              Se van a borrar todos los pacientes, los turnos y las observaciones de tu centro.
-              Tu cuenta, la de los demás profesionales y los horarios de atención quedan como
-              están. No se puede deshacer.
+              Se van a borrar <strong>tus</strong> turnos, tus observaciones y las fichas que
+              cargaste y no atendió nadie más. Los datos de las demás profesionales, las
+              cuentas y los horarios de atención quedan como están. No se puede deshacer.
             </p>
           </div>
         </div>
@@ -40,7 +40,7 @@ export default function VaciarDatos() {
             disabled={enCurso}
             className="boton-peligro boton-chico"
           >
-            {enCurso ? 'Borrando…' : 'Sí, borrar todo'}
+            {enCurso ? 'Borrando…' : 'Sí, borrar lo mío'}
           </button>
           <button
             type="button"
@@ -57,7 +57,7 @@ export default function VaciarDatos() {
 
   return (
     <button type="button" onClick={() => setConfirmando(true)} className="boton-peligro boton-chico">
-      Vaciar pacientes y turnos
+      Vaciar mis pacientes y turnos
     </button>
   )
 }

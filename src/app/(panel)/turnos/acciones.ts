@@ -19,9 +19,32 @@ export interface Resultado {
   id?: string
 }
 
-/** `exclusion_violation` de Postgres: turnos_sin_solape lo agarró en la carrera. */
+/** `exclusion_violation` de Postgres: se lo agarró una restricción de solape. */
 function esSolape(error: { code?: string } | null): boolean {
   return error?.code === '23P01'
+}
+
+/**
+ * El solape es el de turnos_paciente_sin_solape (0007): ese paciente ya
+ * tiene un turno a esa hora con ese profesional. Puede llegar acá aunque
+ * el chequeo previo no lo haya visto, si el turno lo cargó otra persona:
+ * con la visibilidad por profesional (0009) no es legible desde acá.
+ */
+function esDuplicadoDePaciente(error: { code?: string; message?: string } | null): boolean {
+  return esSolape(error) && (error?.message ?? '').includes('turnos_paciente_sin_solape')
+}
+
+/**
+ * Corregir un turno (reprogramar, cancelar, cambiarle el tipo) lo puede
+ * hacer quien lo atiende y también quien lo cargó, para poder deshacer su
+ * propio error al cargárselo a una colega. Marcar realizado/ausente y la
+ * nota clínica NO: eso es registro clínico de quien atendió.
+ */
+function puedeCorregir(
+  turno: { profesional_id: string; created_by: string | null },
+  perfilId: string,
+): boolean {
+  return turno.profesional_id === perfilId || turno.created_by === perfilId
 }
 
 async function agregarEvento(
@@ -84,6 +107,7 @@ export async function crearTurno(_previo: Resultado, datos: FormData): Promise<R
       .from('pacientes')
       .insert({
         centro_id: sesion.centro.id,
+        created_by: sesion.perfil.id,
         nombre,
         apellido,
         telefono,
@@ -145,10 +169,14 @@ export async function crearTurno(_previo: Resultado, datos: FormData): Promise<R
       origen: 'centro',
       created_by: sesion.perfil.id,
     })
+
     .select('id')
     .single()
 
   if (error || !turno) {
+    if (esDuplicadoDePaciente(error)) {
+      return { error: 'Ese paciente ya tiene un turno a esa hora con ese profesional.' }
+    }
     if (esSolape(error)) return { error: 'Ese horario ya está ocupado. Elegí otro horario.' }
     return { error: error?.message ?? 'No se pudo crear el turno.' }
   }
@@ -186,8 +214,8 @@ export async function reprogramarTurno(_previo: Resultado, datos: FormData): Pro
   if (['realizado', 'ausente', 'cancelado'].includes(turno.estado)) {
     return { error: 'Este turno ya está cerrado: no se puede reprogramar.' }
   }
-  if (!sesion.esAdmin && turno.profesional_id !== sesion.perfil.id) {
-    return { error: 'Solo el profesional del turno o el administrador pueden modificarlo.' }
+  if (!puedeCorregir(turno, sesion.perfil.id)) {
+    return { error: 'Ese turno lo atiende otra profesional: solo ella puede modificarlo.' }
   }
 
   const duracion = minutos(turno.hora_fin) - minutos(turno.hora_inicio)
@@ -255,8 +283,8 @@ export async function cancelarTurno(_previo: Resultado, datos: FormData): Promis
   if (['realizado', 'ausente', 'cancelado'].includes(turno.estado)) {
     return { error: 'Este turno ya está cerrado: no se puede cancelar.' }
   }
-  if (!sesion.esAdmin && turno.profesional_id !== sesion.perfil.id) {
-    return { error: 'Solo el profesional del turno o el administrador pueden cancelarlo.' }
+  if (!puedeCorregir(turno, sesion.perfil.id)) {
+    return { error: 'Ese turno lo atiende otra profesional: solo ella puede cancelarlo.' }
   }
 
   const { error } = await supabase
@@ -285,8 +313,8 @@ export async function cambiarTipoSesion(_previo: Resultado, datos: FormData): Pr
   const turno = await turnoPorId(supabase, turnoId)
   if (!turno) return { error: 'No encontramos el turno.' }
   if (turno.estado === 'cancelado') return { error: 'El turno está cancelado.' }
-  if (!sesion.esAdmin && turno.profesional_id !== sesion.perfil.id) {
-    return { error: 'Solo el profesional del turno o el administrador pueden modificarlo.' }
+  if (!puedeCorregir(turno, sesion.perfil.id)) {
+    return { error: 'Ese turno lo atiende otra profesional: solo ella puede modificarlo.' }
   }
   if (!tipoSesion) return { error: 'Elegí un tipo de sesión.' }
   if (tipoSesion === turno.tipo_sesion) return { error: 'Ya es el tipo que tenía.' }
@@ -322,7 +350,8 @@ export async function marcarTurno(datos: FormData): Promise<void> {
   const turno = await turnoPorId(supabase, turnoId)
   if (!turno) return
   if (turno.estado === 'cancelado') return
-  if (!sesion.esAdmin && turno.profesional_id !== sesion.perfil.id) return
+  // Registro clínico: solo quien atiende, ni siquiera quien lo cargó.
+  if (turno.profesional_id !== sesion.perfil.id) return
   if (!yaPaso(turno.fecha, hhmm(turno.hora_inicio))) return
 
   const { error } = await supabase.from('turnos').update({ estado }).eq('id', turno.id)
@@ -357,8 +386,8 @@ export async function guardarObservacion(_previo: Resultado, datos: FormData): P
   const turno = await turnoPorId(supabase, turnoId)
   if (!turno) return { error: 'No encontramos el turno.' }
   if (turno.estado !== 'realizado') return { error: 'Primero marcá el turno como realizado.' }
-  if (!sesion.esAdmin && turno.profesional_id !== sesion.perfil.id) {
-    return { error: 'La observación la carga el profesional que atendió la sesión.' }
+  if (turno.profesional_id !== sesion.perfil.id) {
+    return { error: 'La observación la carga la profesional que atendió la sesión.' }
   }
 
   const existente = await observacionDeTurno(supabase, turnoId)

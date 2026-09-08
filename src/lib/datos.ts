@@ -8,7 +8,6 @@ import type {
   TurnoEvento,
   TurnoExpandido,
 } from './dominio'
-import { ESTADOS_VIGENTES } from './dominio'
 import { desdeMinutos, diaSemana, grillaHoraria, minutos, yaPaso } from './fechas'
 import type { clienteServidor } from './supabase/servidor'
 
@@ -22,7 +21,7 @@ export type Cliente = Awaited<ReturnType<typeof clienteServidor>>
 
 const SELECT_TURNO =
   'id, centro_id, profesional_id, paciente_id, sede_id, fecha, hora_inicio, hora_fin, ' +
-  'tipo_sesion, estado, motivo, origen, created_at, ' +
+  'tipo_sesion, estado, motivo, origen, created_by, created_at, ' +
   'paciente:pacientes(id, nombre, apellido, cobertura, obra_social, telefono), ' +
   // turnos apunta a perfiles dos veces (profesional_id y created_by): hay que desambiguar.
   'profesional:perfiles!turnos_profesional_id_fkey(id, nombre, especialidad), ' +
@@ -182,9 +181,12 @@ export async function pacientePorId(supabase: Cliente, id: string): Promise<Paci
  * primera sesión (así se ofrece el tipo "Ingreso" por defecto).
  */
 export async function pacientesConTurnoPrevio(supabase: Cliente): Promise<Set<string>> {
-  const { data, error } = await supabase.from('turnos').select('paciente_id')
+  // Vía RPC y no leyendo turnos: con la visibilidad por profesional (0009)
+  // un paciente que solo atiende una colega se vería como sin historial, y
+  // quedaría marcado como Ingreso — que además consume el cupo reservado.
+  const { data, error } = await supabase.rpc('pacientes_con_historial')
   if (error) throw new Error(error.message)
-  return new Set((data ?? []).map((t) => t.paciente_id as string))
+  return new Set((data ?? []) as string[])
 }
 
 /** Turnos + observaciones de un paciente, para la línea de tiempo (UC-07). */
@@ -259,6 +261,34 @@ export interface Franja {
 export const CUPO_TOTAL_SIMULTANEO = 4
 export const CUPO_GENERAL_SIMULTANEO = 3
 
+interface Ocupado {
+  hora_inicio: string
+  hora_fin: string
+  es_ingreso: boolean
+}
+
+/**
+ * Rangos ocupados de un profesional en un día. Va por RPC y no leyendo
+ * `turnos` porque, con la visibilidad por profesional (0009), la agenda de
+ * una colega no es visible: leyendo la tabla se la vería vacía y se
+ * ofrecerían horarios ya tomados. La función de la base devuelve solo
+ * rangos —nunca el paciente— y solo del propio centro.
+ */
+async function ocupacionDe(
+  supabase: Cliente,
+  profesionalId: string,
+  fecha: string,
+  excluir?: string,
+): Promise<Ocupado[]> {
+  const { data, error } = await supabase.rpc('ocupacion_profesional', {
+    p_profesional_id: profesionalId,
+    p_fecha: fecha,
+    p_excluir: excluir ?? null,
+  })
+  if (error) throw new Error(error.message)
+  return (data ?? []) as unknown as Ocupado[]
+}
+
 /**
  * Horarios que se le pueden ofrecer para un turno: dentro de las franjas
  * declaradas por el profesional (UC-09) y con lugar en la capacidad
@@ -274,30 +304,23 @@ export async function slotsDisponibles(
 ): Promise<{ libres: Franja[]; ocupados: Franja[]; atiende: boolean }> {
   const dow = diaSemana(fecha)
 
-  const [horarios, turnos] = await Promise.all([
+  const [horarios, ocupacion] = await Promise.all([
     supabase
       .from('horarios_atencion')
       .select('hora_inicio, hora_fin')
       .eq('profesional_id', profesionalId)
       .eq('dia_semana', dow)
       .order('hora_inicio'),
-    supabase
-      .from('turnos')
-      .select('id, hora_inicio, hora_fin, tipo_sesion')
-      .eq('profesional_id', profesionalId)
-      .eq('fecha', fecha)
-      .in('estado', ESTADOS_VIGENTES),
+    ocupacionDe(supabase, profesionalId, fecha, excluir),
   ])
 
   if (horarios.error) throw new Error(horarios.error.message)
-  if (turnos.error) throw new Error(turnos.error.message)
 
   const franjas = (horarios.data ?? []) as unknown as { hora_inicio: string; hora_fin: string }[]
-  const tomados = (
-    (turnos.data ?? []) as unknown as { id: string; hora_inicio: string; hora_fin: string; tipo_sesion: string }[]
-  )
-    .filter((t) => t.id !== excluir)
-    .map((t) => ({ desde: minutos(t.hora_inicio), hasta: minutos(t.hora_fin) }))
+  const tomados = ocupacion.map((t) => ({
+    desde: minutos(t.hora_inicio),
+    hasta: minutos(t.hora_fin),
+  }))
 
   const libres: Franja[] = []
   for (const f of franjas) {
@@ -346,22 +369,14 @@ export async function capacidadDisponible(
   tipoSesion: string,
   excluir?: string,
 ): Promise<Capacidad> {
-  let q = supabase
-    .from('turnos')
-    .select('id, tipo_sesion')
-    .eq('profesional_id', profesionalId)
-    .eq('fecha', fecha)
-    .in('estado', ESTADOS_VIGENTES)
-    .lt('hora_inicio', fin)
-    .gt('hora_fin', inicio)
-  if (excluir) q = q.neq('id', excluir)
+  const desde = minutos(inicio)
+  const hasta = minutos(fin)
+  const solapados = (await ocupacionDe(supabase, profesionalId, fecha, excluir)).filter(
+    (t) => minutos(t.hora_inicio) < hasta && minutos(t.hora_fin) > desde,
+  )
 
-  const { data, error } = await q
-  if (error) throw new Error(error.message)
-
-  const solapados = (data ?? []) as unknown as { id: string; tipo_sesion: string }[]
   const total = solapados.length
-  const noIngreso = solapados.filter((t) => t.tipo_sesion !== 'Ingreso').length
+  const noIngreso = solapados.filter((t) => !t.es_ingreso).length
 
   if (total >= CUPO_TOTAL_SIMULTANEO) {
     return { disponible: false, motivo: 'Ese horario ya está completo con este profesional.' }
