@@ -105,6 +105,7 @@ export default function GrillaSemana({
                       >
                         <ChipTurno
                           turno={turno}
+                          alto={altoTurno}
                           mostrarProfesional={mostrarProfesional}
                           miId={miId}
                         />
