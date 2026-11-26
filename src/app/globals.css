@@ -167,8 +167,14 @@
   .aviso,
   .aviso-error,
   .aviso-ok,
-  .aviso-info {
+  .aviso-info,
+  .aviso-alerta {
     @apply flex items-start gap-3 rounded-lg border px-4 py-3 text-sm;
+  }
+
+  /* Precauciones clínicas del paciente: tienen que saltar a la vista. */
+  .aviso-alerta {
+    @apply border-amber-300 bg-amber-50 text-amber-900;
   }
 
   .aviso-error {
@@ -356,6 +362,12 @@ html.dark .aviso-ok {
   border-color: rgba(11, 140, 117, 0.35);
   background-color: rgba(11, 140, 117, 0.12);
   color: #6ee7b7;
+}
+
+html.dark .aviso-alerta {
+  border-color: rgba(245, 158, 11, 0.4);
+  background-color: rgba(245, 158, 11, 0.12);
+  color: #fcd34d;
 }
 
 html.dark .aviso-info {

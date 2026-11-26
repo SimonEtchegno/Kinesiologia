@@ -178,6 +178,41 @@ export default function FormularioPaciente({ paciente }: { paciente?: Paciente }
       </section>
 
       <section className="tarjeta p-5">
+        <h2 className="mb-4 font-semibold text-slate-900">Datos clínicos</h2>
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="diagnostico" className="etiqueta">
+              Diagnóstico
+            </label>
+            <textarea
+              id="diagnostico"
+              name="diagnostico"
+              rows={2}
+              defaultValue={paciente?.diagnostico ?? ''}
+              placeholder="Ej.: lumbalgia mecánica, post-quirúrgico de LCA…"
+              className="campo resize-y"
+            />
+          </div>
+          <div>
+            <label htmlFor="precauciones" className="etiqueta">
+              Precauciones / alertas
+            </label>
+            <textarea
+              id="precauciones"
+              name="precauciones"
+              rows={2}
+              defaultValue={paciente?.precauciones ?? ''}
+              placeholder="Marcapasos, antecedente oncológico, embarazo, anticoagulado…"
+              className="campo resize-y"
+            />
+            <p className="ayuda">
+              Se muestra destacado en la ficha, en el turno y en la agenda.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="tarjeta p-5">
         <label htmlFor="notas" className="etiqueta">
           Notas administrativas
         </label>
@@ -186,7 +221,7 @@ export default function FormularioPaciente({ paciente }: { paciente?: Paciente }
           name="notas"
           rows={3}
           defaultValue={paciente?.notas ?? ''}
-          placeholder="Derivación, diagnóstico médico, cantidad de sesiones autorizadas…"
+          placeholder="Derivación, cantidad de sesiones autorizadas…"
           className="campo resize-y"
         />
         <p className="ayuda">

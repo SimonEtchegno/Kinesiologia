@@ -21,6 +21,8 @@ interface CamposPaciente {
   cobertura: 'particular' | 'obra_social'
   obra_social: string | null
   nro_afiliado: string | null
+  diagnostico: string | null
+  precauciones: string | null
   notas: string | null
 }
 
@@ -54,6 +56,8 @@ function leer(datos: FormData): CamposPaciente | string {
     obra_social: cobertura === 'obra_social' ? obraSocial : null,
     nro_afiliado:
       cobertura === 'obra_social' ? String(datos.get('nro_afiliado') ?? '').trim() || null : null,
+    diagnostico: String(datos.get('diagnostico') ?? '').trim() || null,
+    precauciones: String(datos.get('precauciones') ?? '').trim() || null,
     notas: String(datos.get('notas') ?? '').trim() || null,
   }
 }

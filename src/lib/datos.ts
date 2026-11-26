@@ -22,7 +22,7 @@ export type Cliente = Awaited<ReturnType<typeof clienteServidor>>
 const SELECT_TURNO =
   'id, centro_id, profesional_id, paciente_id, sede_id, fecha, hora_inicio, hora_fin, ' +
   'tipo_sesion, estado, motivo, origen, created_by, created_at, ' +
-  'paciente:pacientes(id, nombre, apellido, cobertura, obra_social, telefono), ' +
+  'paciente:pacientes(id, nombre, apellido, cobertura, obra_social, telefono, precauciones), ' +
   // turnos apunta a perfiles dos veces (profesional_id y created_by): hay que desambiguar.
   'profesional:perfiles!turnos_profesional_id_fkey(id, nombre, especialidad), ' +
   'sede:sedes(id, nombre), ' +
@@ -141,7 +141,7 @@ export async function observacionDeTurno(
 
 const SELECT_PACIENTE =
   'id, centro_id, nombre, apellido, dni, telefono, email, fecha_nacimiento, ' +
-  'cobertura, obra_social, nro_afiliado, notas, activo, created_at'
+  'cobertura, obra_social, nro_afiliado, diagnostico, precauciones, notas, activo, created_at'
 
 export async function buscarPacientes(
   supabase: Cliente,

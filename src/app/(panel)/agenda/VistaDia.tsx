@@ -4,6 +4,7 @@ import Link from 'next/link'
 import BotonEnviar from '@/componentes/BotonEnviar'
 import {
   IconoAgenda,
+  IconoAlerta,
   IconoCheck,
   IconoFlechaDerecha,
   IconoNota,
@@ -143,6 +144,16 @@ export default function VistaDia({
                     {t.paciente.cobertura === 'obra_social'
                       ? (t.paciente.obra_social ?? COBERTURAS.obra_social)
                       : COBERTURAS.particular}
+                  </span>
+                )}
+
+                {t.paciente?.precauciones && (
+                  <span
+                    className="chip max-w-full bg-amber-50 text-amber-900 ring-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-700"
+                    title={t.paciente.precauciones}
+                  >
+                    <IconoAlerta className="size-3.5 shrink-0" />
+                    <span className="truncate">{t.paciente.precauciones}</span>
                   </span>
                 )}
 
