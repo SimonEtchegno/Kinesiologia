@@ -56,6 +56,10 @@ export interface Paciente {
   cobertura: Cobertura
   obra_social: string | null
   nro_afiliado: string | null
+  /** Diagnóstico de derivación. */
+  diagnostico: string | null
+  /** Alertas clínicas a tener a la vista: marcapasos, oncológico, embarazo… */
+  precauciones: string | null
   notas: string | null
   activo: boolean
   created_at: string
@@ -110,7 +114,10 @@ export interface TurnoEvento {
 
 /** Turno con los datos relacionados que la agenda necesita mostrar. */
 export interface TurnoExpandido extends Turno {
-  paciente: Pick<Paciente, 'id' | 'nombre' | 'apellido' | 'cobertura' | 'obra_social' | 'telefono'> | null
+  paciente: Pick<
+    Paciente,
+    'id' | 'nombre' | 'apellido' | 'cobertura' | 'obra_social' | 'telefono' | 'precauciones'
+  > | null
   profesional: Pick<Perfil, 'id' | 'nombre' | 'especialidad'> | null
   sede: Pick<Sede, 'id' | 'nombre'> | null
   tiene_observacion: boolean

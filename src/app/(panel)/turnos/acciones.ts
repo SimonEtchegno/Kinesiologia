@@ -99,9 +99,13 @@ export async function crearTurno(_previo: Resultado, datos: FormData): Promise<R
     const telefono = String(datos.get('nuevo_telefono') ?? '').trim() || null
     const cobertura = String(datos.get('nuevo_cobertura') ?? 'particular') as 'particular' | 'obra_social'
     const obraSocial = String(datos.get('nuevo_obra_social') ?? '').trim() || null
+    const nacimiento = String(datos.get('nuevo_fecha_nacimiento') ?? '').trim() || null
+    const diagnostico = String(datos.get('nuevo_diagnostico') ?? '').trim() || null
+    const precauciones = String(datos.get('nuevo_precauciones') ?? '').trim() || null
 
     if (!nombre || !apellido) return { error: 'Para dar de alta al paciente hace falta nombre y apellido.' }
     if (cobertura === 'obra_social' && !obraSocial) return { error: 'Indicá la obra social del paciente.' }
+    if (nacimiento && !esISO(nacimiento)) return { error: 'La fecha de nacimiento no es válida.' }
 
     const { data, error } = await supabase
       .from('pacientes')
@@ -113,6 +117,9 @@ export async function crearTurno(_previo: Resultado, datos: FormData): Promise<R
         telefono,
         cobertura,
         obra_social: cobertura === 'obra_social' ? obraSocial : null,
+        fecha_nacimiento: nacimiento,
+        diagnostico,
+        precauciones,
       })
       .select('id')
       .single()

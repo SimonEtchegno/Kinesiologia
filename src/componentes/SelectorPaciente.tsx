@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import AvisoPrecauciones from '@/componentes/AvisoPrecauciones'
 import { IconoBuscar, IconoCheck, IconoMas, IconoX } from '@/componentes/Iconos'
 import { COBERTURAS, type Paciente } from '@/lib/dominio'
 
@@ -110,9 +111,45 @@ export default function SelectorPaciente({
               />
             </div>
           )}
+          <div>
+            <label htmlFor="nuevo_fecha_nacimiento" className="etiqueta">
+              Fecha de nacimiento
+            </label>
+            <input
+              id="nuevo_fecha_nacimiento"
+              name="nuevo_fecha_nacimiento"
+              type="date"
+              className="campo"
+            />
+          </div>
+          <div>
+            <label htmlFor="nuevo_diagnostico" className="etiqueta">
+              Diagnóstico
+            </label>
+            <input
+              id="nuevo_diagnostico"
+              name="nuevo_diagnostico"
+              placeholder="Ej.: lumbalgia, post-quirúrgico de LCA…"
+              className="campo"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="nuevo_precauciones" className="etiqueta">
+              Precauciones / alertas
+            </label>
+            <input
+              id="nuevo_precauciones"
+              name="nuevo_precauciones"
+              placeholder="Marcapasos, antecedente oncológico, embarazo…"
+              className="campo border-amber-300 focus:border-amber-500"
+            />
+          </div>
         </div>
 
-        <p className="ayuda">Después vas a poder completar el resto de la ficha.</p>
+        <p className="ayuda">
+          La edad se calcula sola con la fecha de nacimiento. Después vas a poder completar el
+          resto de la ficha.
+        </p>
       </div>
     )
   }
@@ -120,6 +157,10 @@ export default function SelectorPaciente({
   return (
     <div>
       <input type="hidden" name={nombre} value={elegido} />
+
+      {seleccionado && (
+        <AvisoPrecauciones precauciones={seleccionado.precauciones} className="mb-2" />
+      )}
 
       {seleccionado ? (
         <div className="flex items-center gap-3 rounded-lg border border-acento-200 bg-acento-50/60 px-3 py-2.5">

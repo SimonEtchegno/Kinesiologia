@@ -9,6 +9,7 @@ import {
   IconoSede,
   IconoX,
 } from '@/componentes/Iconos'
+import AvisoPrecauciones from '@/componentes/AvisoPrecauciones'
 import BotonEnviar from '@/componentes/BotonEnviar'
 import EnviarWhatsApp from '@/componentes/EnviarWhatsApp'
 import { ChipEstado, Dato, Encabezado, Vacio } from '@/componentes/ui'
@@ -142,6 +143,8 @@ export default async function PaginaTurno({ params }: { params: Promise<{ id: st
       />
 
       <div className="space-y-5">
+        <AvisoPrecauciones precauciones={turno.paciente?.precauciones} />
+
         {paraOtra && (
           <div className="aviso-info" role="status">
             <IconoPacientes className="size-5 shrink-0" />

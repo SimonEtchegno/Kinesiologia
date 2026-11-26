@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { IconoAlerta } from '@/componentes/Iconos'
 import { ESTADOS, nombreCompleto, tipoSesionDe, type TurnoExpandido } from '@/lib/dominio'
 import { hhmm } from '@/lib/fechas'
 
@@ -34,6 +35,7 @@ export default function ChipTurno({
   const paraOtra = !!miId && turno.profesional_id !== miId
   const nombreProf = turno.profesional?.nombre
   const paciente = nombreCompleto(turno.paciente)
+  const precauciones = turno.paciente?.precauciones?.trim() || null
 
   const titulo =
     hhmm(turno.hora_inicio) +
@@ -45,7 +47,8 @@ export default function ChipTurno({
     tipo.etiqueta +
     ' · ' +
     estado.etiqueta +
-    (paraOtra && nombreProf ? ' · para ' + nombreProf : '')
+    (paraOtra && nombreProf ? ' · para ' + nombreProf : '') +
+    (precauciones ? ' · ⚠ ' + precauciones : '')
 
   const subtitulo =
     paraOtra && nombreProf
@@ -58,8 +61,16 @@ export default function ChipTurno({
     <span className="shrink-0 font-semibold tabular-nums opacity-70">{hhmm(turno.hora_inicio)}</span>
   )
   const nombre = (
-    <span className={'min-w-0 truncate font-semibold ' + (cancelado ? 'line-through' : '')}>
-      {paciente}
+    <span className="flex min-w-0 items-center gap-1">
+      {precauciones && (
+        <IconoAlerta
+          className="size-3 shrink-0 text-amber-600 dark:text-amber-400"
+          aria-label="Tiene precauciones"
+        />
+      )}
+      <span className={'min-w-0 truncate font-semibold ' + (cancelado ? 'line-through' : '')}>
+        {paciente}
+      </span>
     </span>
   )
   const punto = <span className={'size-1.5 shrink-0 rounded-full ' + estado.punto} />
@@ -116,6 +127,9 @@ export default function ChipTurno({
           {hhmm(turno.hora_inicio)}–{hhmm(turno.hora_fin)} · {tipo.etiqueta} · {estado.etiqueta}
           {!paraOtra && mostrarProfesional && nombreProf ? ' · ' + nombreProf : ''}
         </p>
+        {precauciones && (
+          <p className="mt-0.5 font-semibold text-amber-300">⚠ {precauciones}</p>
+        )}
         <span className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-slate-900" />
       </div>
     </div>

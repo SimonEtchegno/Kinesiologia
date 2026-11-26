@@ -10,6 +10,7 @@ import {
   IconoPacientes,
   IconoTelefono,
 } from '@/componentes/Iconos'
+import AvisoPrecauciones from '@/componentes/AvisoPrecauciones'
 import BotonEnviar from '@/componentes/BotonEnviar'
 import EnviarWhatsApp from '@/componentes/EnviarWhatsApp'
 import { ChipEstado, Dato, Encabezado, Vacio } from '@/componentes/ui'
@@ -114,6 +115,8 @@ export default async function PaginaPaciente({
         }
       />
 
+      <AvisoPrecauciones precauciones={paciente.precauciones} className="mb-5" />
+
       <div className="grid gap-5 lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start">
         <div className="space-y-5">
           <section className="tarjeta p-5">
@@ -170,6 +173,13 @@ export default async function PaginaPaciente({
                   <span className="block text-xs text-slate-500">
                     Afiliado {paciente.nro_afiliado}
                   </span>
+                )}
+              </Dato>
+              <Dato etiqueta="Diagnóstico">
+                {paciente.diagnostico ? (
+                  <span className="whitespace-pre-line">{paciente.diagnostico}</span>
+                ) : (
+                  '—'
                 )}
               </Dato>
               {paciente.notas && (
